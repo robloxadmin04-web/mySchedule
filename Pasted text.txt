@@ -1,0 +1,709 @@
+Create a complete and polished College Student Dashboard web application.
+
+IMPORTANT FILE RULES:
+- Use ONLY these 3 files:
+  1. index.html
+  2. style.css
+  3. script.js
+- Do not create any other files.
+- Do not use React, Vue, Angular, Bootstrap, Tailwind, jQuery, TypeScript, PHP, Python, Node.js, or any backend.
+- Use pure HTML, CSS, and vanilla JavaScript only.
+- The website must work by simply opening index.html in a browser.
+- Store user data using localStorage so the website works without a backend.
+- Do not require a database or server.
+- Do not use mojibake.
+- Use only normal UTF-8 text and avoid broken or corrupted characters.
+- Keep the code clean, organized, readable, and easy to modify.
+- Do not put CSS or JavaScript inside index.html. Keep them in their respective files.
+
+DESIGN DIRECTION:
+
+Create a premium monochrome student productivity dashboard.
+
+Color palette:
+- Black
+- White
+- Dark gray
+- Medium gray
+- Light gray
+
+Do not use colorful gradients.
+Do not use bright blue, purple, green, red, or other accent colors.
+Use grayscale only.
+
+The design should feel:
+- Modern
+- Minimal
+- Professional
+- Premium
+- Clean
+- Academic
+- Slightly futuristic but realistic
+- Similar to a polished productivity application
+- Not overly decorative
+- Not obviously AI generated
+
+Use:
+- Clean cards
+- Subtle borders
+- Soft shadows
+- Rounded corners
+- Good spacing
+- Strong typography hierarchy
+- Minimal icons
+- Smooth but subtle animations
+- Responsive layout
+
+The website must have both Light Mode and Dark Mode.
+
+Add a visible Light/Dark mode toggle in the header.
+
+Light mode:
+- White background
+- Black text
+- Light gray cards
+- Gray borders
+
+Dark mode:
+- Near-black background
+- White text
+- Dark gray cards
+- Gray borders
+
+Save the selected theme using localStorage.
+
+GENERAL APPLICATION STRUCTURE:
+
+Create a desktop dashboard with:
+
+Left sidebar:
+- Dashboard
+- Schedule
+- Assignments
+- Subjects
+- Grades
+- Focus
+- Notes
+- Files
+- Settings
+
+On mobile:
+- Convert the sidebar into a mobile navigation menu.
+- Add a hamburger button.
+- Make all sections fully responsive.
+- Tables and cards must not overflow horizontally.
+
+HEADER:
+
+Show:
+- Student name
+- Current date
+- Current time
+- Theme toggle
+- Settings button
+
+The user must be able to customize their name.
+
+DASHBOARD:
+
+Create a complete dashboard containing:
+
+1. Welcome section
+
+Example:
+Good morning, Student
+
+Show:
+- Current date
+- Current time
+- Short customizable greeting
+
+2. Next Class card
+
+Show:
+- Subject
+- Time
+- Day
+- Location
+- Class type
+- Countdown until class
+
+Class types:
+- Zoom
+- Face to Face
+- Online
+- Other
+
+The user must be able to customize class types.
+
+If there is no upcoming class:
+Show:
+No upcoming classes
+
+3. Today's Schedule
+
+Display all classes for the current day.
+
+Each class should show:
+- Subject
+- Start time
+- End time
+- Location
+- Class type
+
+4. Today's Tasks
+
+Show assignments and tasks due today.
+
+Allow:
+- Complete task
+- Uncomplete task
+- Delete task
+- Edit task
+
+5. Upcoming Deadlines
+
+Show upcoming assignments, projects, quizzes, exams, and other deadlines.
+
+6. Weekly Progress
+
+Display a simple grayscale progress indicator based on completed tasks.
+
+7. Quick Actions
+
+Buttons:
+- Add Class
+- Add Task
+- Add Subject
+- Add Note
+- Start Focus
+
+SCHEDULE:
+
+Create a full weekly schedule.
+
+Display:
+- Monday
+- Tuesday
+- Wednesday
+- Thursday
+- Friday
+- Saturday
+- Sunday
+
+Each class should contain:
+- Subject name
+- Start time
+- End time
+- Location
+- Class type
+- Instructor
+- Room
+- Notes
+
+Allow users to:
+- Add class
+- Edit class
+- Delete class
+- Duplicate class
+- Move class
+- Customize schedule
+- Choose which days they attend
+- Set recurring classes
+
+Support multiple classes on the same day.
+
+Sort classes automatically by start time.
+
+If a day has no class:
+Show:
+No classes
+
+Allow users to customize:
+- Day names
+- Subject names
+- Class type
+- Locations
+- Rooms
+- Instructor names
+- Schedule format
+- 12 hour or 24 hour time format
+
+ASSIGNMENTS:
+
+Create an assignment manager.
+
+Each assignment should support:
+- Title
+- Subject
+- Description
+- Due date
+- Due time
+- Priority
+- Status
+- Progress
+- Notes
+
+Priority:
+- Low
+- Medium
+- High
+
+Status:
+- Not Started
+- In Progress
+- Completed
+
+Allow:
+- Add
+- Edit
+- Delete
+- Complete
+- Search
+- Filter
+- Sort
+
+Filters:
+- All
+- Today
+- Upcoming
+- Overdue
+- Completed
+
+Automatically calculate:
+- Days remaining
+- Overdue status
+- Completion percentage
+
+SUBJECTS:
+
+Create a subject management section.
+
+Each subject can contain:
+- Subject name
+- Subject code
+- Instructor
+- Room
+- Schedule
+- Description
+- Notes
+- Custom color should NOT be used because the design must remain monochrome.
+- Instead allow a grayscale label or visual priority level.
+
+Allow:
+- Add subject
+- Edit subject
+- Delete subject
+- View subject details
+
+GRADE CALCULATOR:
+
+Create a complete grade management system.
+
+Allow users to create grading categories.
+
+Example:
+- Quiz
+- Assignment
+- Activity
+- Exam
+- Project
+- Attendance
+- Other
+
+Each category should have:
+- Score
+- Maximum score
+- Weight
+
+Calculate:
+- Category percentage
+- Weighted percentage
+- Current overall grade
+
+Allow users to enter:
+- Current grade
+- Target grade
+
+Calculate:
+- Current grade
+- Target grade
+- Required score for remaining assessments when possible
+
+Make the grade calculator flexible because different schools use different grading systems.
+
+Allow the user to customize:
+- Grading scale
+- Category names
+- Category weights
+- Passing grade
+- Target grade
+
+FOCUS TIMER:
+
+Create a functional Pomodoro and custom focus timer.
+
+Modes:
+- Focus
+- Short Break
+- Long Break
+- Custom
+
+Default:
+- Focus: 25 minutes
+- Short Break: 5 minutes
+- Long Break: 15 minutes
+
+Allow the user to customize all timer durations.
+
+Buttons:
+- Start
+- Pause
+- Resume
+- Reset
+- Skip
+
+Show:
+- Current mode
+- Remaining time
+- Progress
+- Number of completed focus sessions
+
+Store focus statistics in localStorage.
+
+NOTES:
+
+Create a simple notes system.
+
+Allow users to:
+- Create note
+- Edit note
+- Delete note
+- Search notes
+- Pin note
+- Archive note
+
+Each note:
+- Title
+- Content
+- Created date
+- Updated date
+- Subject
+
+Use a clean note card design.
+
+FILES:
+
+Create a simple file/resource organizer.
+
+Because there is no backend, do not pretend files are uploaded to a server.
+
+Allow users to save:
+- File name
+- File URL
+- Description
+- Subject
+- Category
+
+Categories:
+- Modules
+- Assignments
+- References
+- School Links
+- Other
+
+Users can click saved URLs.
+
+Also allow deleting and editing saved resources.
+
+SETTINGS:
+
+Create a comprehensive settings page.
+
+Everything that can reasonably be customized by the user should be customizable.
+
+Include:
+
+PROFILE:
+- Name
+- Student ID
+- Program
+- Year level
+- Section
+- School
+- Email
+- Optional profile information
+
+SCHEDULE SETTINGS:
+- Week starts Monday or Sunday
+- 12 hour or 24 hour format
+- Default class duration
+- Default class type
+
+TASK SETTINGS:
+- Default priority
+- Default task status
+- Sort order
+
+GRADE SETTINGS:
+- Passing grade
+- Target grade
+- Grading system
+- Decimal precision
+
+FOCUS SETTINGS:
+- Focus duration
+- Short break
+- Long break
+- Sessions before long break
+
+APPEARANCE:
+- Light mode
+- Dark mode
+- System mode if possible
+- Compact layout
+- Comfortable layout
+- Border radius preference
+- Reduce animations option
+
+DASHBOARD SETTINGS:
+Allow users to choose which dashboard widgets are visible.
+
+For example:
+- Next Class
+- Today's Schedule
+- Today's Tasks
+- Upcoming Deadlines
+- Weekly Progress
+- Focus Statistics
+- Quick Actions
+
+Allow users to reorder dashboard widgets if practical.
+
+DATA MANAGEMENT:
+
+Use localStorage for all user data.
+
+Create:
+- Export Data
+- Import Data
+- Reset Data
+
+Export should download a JSON file containing all user data.
+
+Import should allow the user to select a JSON file and restore their data.
+
+Before resetting:
+Show a confirmation dialog.
+
+Do not lose data when the page is refreshed.
+
+FIRST TIME EXPERIENCE:
+
+If there is no saved profile or schedule, show a simple setup screen.
+
+Ask for:
+- Name
+- School
+- Program
+- Year level
+
+Then optionally:
+- Add first subject
+- Add first class
+- Add first assignment
+
+Allow the user to skip setup.
+
+DATE AND TIME:
+
+Use the user's local browser date and time.
+
+Automatically update the clock.
+
+Automatically determine:
+- Today
+- Current class
+- Next class
+- Upcoming deadline
+- Overdue assignments
+
+Do not hardcode the current date.
+
+SEARCH:
+
+Add global search functionality if practical.
+
+Search through:
+- Subjects
+- Classes
+- Assignments
+- Notes
+- Files
+
+Show matching results.
+
+EMPTY STATES:
+
+Every section must have a proper empty state.
+
+Examples:
+No classes scheduled
+No assignments yet
+No notes yet
+No saved files
+No subjects yet
+
+Make empty states clean and minimal.
+
+MODALS:
+
+Use reusable modal dialogs for:
+- Add
+- Edit
+- Delete confirmation
+- Settings
+- Import/export
+- Setup
+
+Do not create messy browser prompt() dialogs.
+
+Use custom modal components.
+
+ACCESSIBILITY:
+
+Include:
+- Proper labels
+- Keyboard navigation
+- Visible focus states
+- Buttons with clear names
+- Good contrast
+- Semantic HTML
+- ARIA labels where useful
+
+PERFORMANCE:
+
+Keep the website lightweight.
+
+Do not load unnecessary libraries.
+
+Avoid excessive animations.
+
+Use CSS variables for the entire theme.
+
+Use reusable JavaScript functions.
+
+CODE ORGANIZATION:
+
+index.html:
+- Complete semantic HTML structure
+- Navigation
+- Sections
+- Modals
+- Forms
+- Dashboard containers
+
+style.css:
+- All styling
+- CSS variables
+- Light mode
+- Dark mode
+- Responsive design
+- Animations
+- Components
+
+script.js:
+- Application state
+- localStorage
+- CRUD operations
+- Schedule logic
+- Task logic
+- Grade calculations
+- Focus timer
+- Notes
+- Files
+- Settings
+- Theme switching
+- Import/export
+- Dashboard rendering
+- Date/time logic
+
+Do not duplicate unnecessary code.
+
+IMPORTANT DATA RULES:
+
+Never hardcode the example student's personal information into the application as permanent data.
+
+Use generic default values such as:
+Student
+My College
+My Program
+
+The user must be able to replace everything.
+
+Use example data only if needed for demonstration, and allow it to be deleted.
+
+IMPORTANT UX RULE:
+
+The application should feel like a real product, not a simple school project.
+
+It should be immediately usable.
+
+Avoid excessive text.
+
+Use cards, tables, tabs, badges, progress bars, dropdowns, toggles, and modals where appropriate.
+
+Keep the visual hierarchy strong.
+
+MONOCHROME REQUIREMENT:
+
+Absolutely no colorful UI.
+
+Only use:
+- #000000
+- #111111
+- #222222
+- #333333
+- #555555
+- #777777
+- #999999
+- #CCCCCC
+- #EEEEEE
+- #FFFFFF
+
+You may use opacity variations of these grayscale colors.
+
+Do not use emojis as the main UI icons.
+
+Use CSS shapes, inline SVG icons, or simple text icons if necessary.
+
+IMPORTANT TEXT ENCODING:
+
+Do not generate mojibake.
+
+Do not use corrupted symbols.
+
+Keep all source code and UI text clean and readable.
+
+Avoid unusual Unicode characters in the code.
+
+Use standard ASCII characters whenever possible.
+
+FINAL REQUIREMENT:
+
+Generate the complete working contents of:
+- index.html
+- style.css
+- script.js
+
+The three files must work together immediately.
+
+Do not give pseudocode.
+
+Do not omit functionality.
+
+Do not say that a feature requires a backend.
+
+Implement everything that can be implemented with HTML, CSS, JavaScript, and localStorage.
+
+Make the final result polished, responsive, customizable, and suitable for any college student, not just one specific student.
