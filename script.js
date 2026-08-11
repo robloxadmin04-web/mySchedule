@@ -1183,15 +1183,247 @@ function resetData(){
    AI IMAGE ANALYSIS — Claude Vision API
    ========================================================= */
 
+/* =========================================================
+   IMPROVED OCR-ONLY PARSER (no AI needed)
+   Understands ICCT COR day codes: WSa MTh M W T F Sa
+========================================================= */
+
+// ICCT day code expansion: e.g. "WSa" -> ["Wednesday","Saturday"]
+const ICCT_DAY_MAP = {
+  "M":   ["Monday"],
+  "T":   ["Tuesday"],
+  "W":   ["Wednesday"],
+  "Th":  ["Thursday"],
+  "F":   ["Friday"],
+  "Sa":  ["Saturday"],
+  "S":   ["Saturday"],
+  "Su":  ["Sunday"],
+  "MT":  ["Monday","Tuesday"],
+  "MW":  ["Monday","Wednesday"],
+  "MF":  ["Monday","Friday"],
+  "MTh": ["Monday","Thursday"],
+  "TW":  ["Tuesday","Wednesday"],
+  "TTh": ["Tuesday","Thursday"],
+  "WF":  ["Wednesday","Friday"],
+  "ThF": ["Thursday","Friday"],
+  "MWF": ["Monday","Wednesday","Friday"],
+  "TTh": ["Tuesday","Thursday"],
+  "TThS":["Tuesday","Thursday","Saturday"],
+  "WSa": ["Wednesday","Saturday"],
+  "WS":  ["Wednesday","Saturday"],
+  "MS":  ["Monday","Saturday"],
+  "MSa": ["Monday","Saturday"],
+  "TSa": ["Tuesday","Saturday"],
+  "ThSa":["Thursday","Saturday"],
+  "FSa": ["Friday","Saturday"]
+};
+
+function expandDayCodes(raw){
+  // Try exact match first
+  if(ICCT_DAY_MAP[raw]) return ICCT_DAY_MAP[raw];
+  // Try uppercase
+  const up = Object.keys(ICCT_DAY_MAP).find(k=>k.toUpperCase()===raw.toUpperCase());
+  if(up) return ICCT_DAY_MAP[up];
+  // Split known patterns greedily: WSa -> W + Sa, MTh -> M + Th
+  const order = ["MTh","TTh","ThSa","TThS","MWF","WSa","MSa","TSa","FSa","WS","MS","TS","MW","MF","MT","TW","WF","ThF","Th","Sa","Su","Mo","Tu","We","Fr","M","T","W","F","S"];
+  const days = [];
+  let rem = raw;
+  while(rem.length > 0){
+    let matched = false;
+    for(const key of order){
+      if(rem.startsWith(key) && ICCT_DAY_MAP[key]){
+        days.push(...ICCT_DAY_MAP[key]);
+        rem = rem.slice(key.length);
+        matched = true;
+        break;
+      }
+    }
+    if(!matched) break; // unknown remainder
+  }
+  return days.length ? days : null;
+}
+
+function parseTimeRange(str){
+  // Matches: "06:00 AM - 07:30 AM", "07:30 AM-09:00 AM", "11:00 AM - 01:00 PM"
+  const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if(!m) return null;
+  function to24(h, min, period){
+    h = parseInt(h); min = parseInt(min);
+    if(period){
+      const p = period.toUpperCase();
+      if(p==="PM" && h!==12) h+=12;
+      if(p==="AM" && h===12) h=0;
+    }
+    return String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0");
+  }
+  return {
+    start: to24(m[1], m[2], m[3] || m[6]),
+    end:   to24(m[4], m[5], m[6] || m[3])
+  };
+}
+
+/**
+ * Parses ICCT COR / schedule text (from OCR or PDF text extraction).
+ * Handles the exact column layout: Course | Section | LecU | LabU | Days | Time | Room
+ * Also handles simpler weekly schedule grid format.
+ */
+function parseScheduleText(rawText){
+  const rows = [];
+  const lines = rawText.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+
+  // --- Mode 1: COR table format (Days column + Time and Date column) ---
+  // Look for lines that contain a day code AND a time range
+  const COR_DAY_RE = /(MWF|MTh|TTh|WSa|TThS|MWF|MW|MF|MT|TW|WF|ThF|MSa|TSa|FSa|WS|MS|Th|Sa|Su|M|T|W|F|S)/;
+  const TIME_RE    = /(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-–to]+\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)/i;
+  const ROOM_RE    = /([A-Z]{1,4}\d[\w.\-]*|GYM|ZOOM|ONLINE)/;
+
+  // Collect subject names: lines with all caps course codes like OLENG01, OLMATH01
+  const COURSE_CODE_RE = /([A-Z]{2,8}-?\d{2,3}[A-Z]?)/;
+
+  let currentSubject = "";
+  let currentCode    = "";
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+
+    // Detect course code lines (OLENG01, OLMATH01, OLFIL-01, etc.)
+    const codeMatch = line.match(COURSE_CODE_RE);
+    if(codeMatch && line.length < 60 && !/\d{1,2}:\d{2}/.test(line)){
+      currentCode = codeMatch[1];
+      // Next non-empty, non-classroom line is usually subject name
+      const nextLine = lines[i+1] || "";
+      if(nextLine && !/Google Classroom|Gclass|LFAU|Section/i.test(nextLine) && nextLine.length > 3 && nextLine.length < 80){
+        currentSubject = nextLine.trim();
+      }
+      continue;
+    }
+
+    // Detect subject name lines (after code): "Purposive Communication", "Mathematics in the Modern World"
+    if(!codeMatch && currentCode && !currentSubject && !/Google Classroom|Gclass|LFAU|Section/i.test(line) && /[A-Za-z]{4,}/.test(line) && line.length < 80){
+      currentSubject = line.trim();
+      continue;
+    }
+
+    // Lines with day code + time = schedule entry
+    const dayMatch  = line.match(COR_DAY_RE);
+    const timeMatch = line.match(TIME_RE);
+
+    if(dayMatch && timeMatch){
+      const days = expandDayCodes(dayMatch[1]);
+      const time = parseTimeRange(timeMatch[1]);
+      if(!days || !time) continue;
+
+      const roomMatch = line.match(ROOM_RE);
+      const room = roomMatch ? roomMatch[1] : "";
+
+      // Detect modality
+      let type = "Face to Face";
+      if(/ZOOM/i.test(line)) type = "Zoom";
+      else if(/ONLINE/i.test(line) || /GYM/i.test(line)) type = /GYM/i.test(line) ? "Face to Face" : "Online";
+
+      // Also check if LEC or LAB — skip LAB lines (already covered by LEC usually)
+      const isLab = /LAB/i.test(line);
+
+      const name = currentSubject || currentCode || "Unknown";
+
+      days.forEach(day=>{
+        // Don't double-add if same subject+day+start already added
+        const dup = rows.find(r=>r.subject===name && r.day===day && r.start===time.start);
+        if(!dup){
+          rows.push({
+            id:uid(), include:true,
+            subject: name,
+            day, start: time.start, end: time.end,
+            room, type, instructor:""
+          });
+        }
+      });
+      continue;
+    }
+
+    // If line is a standalone day-code column (no time on same line), buffer it
+    // — some OCR splits columns across lines; handle below via lookahead
+    if(dayMatch && !timeMatch){
+      // look ahead for a time line
+      for(let j=i+1; j<Math.min(i+4, lines.length); j++){
+        const ahead = lines[j];
+        const aheadTime = ahead.match(TIME_RE);
+        if(aheadTime){
+          const days = expandDayCodes(dayMatch[1]);
+          const time = parseTimeRange(aheadTime[1]);
+          if(days && time){
+            const roomMatch = ahead.match(ROOM_RE) || line.match(ROOM_RE);
+            const room = roomMatch ? roomMatch[1] : "";
+            let type = "Face to Face";
+            if(/ZOOM/i.test(ahead+line)) type = "Zoom";
+            const name = currentSubject || currentCode || "Unknown";
+            days.forEach(day=>{
+              const dup = rows.find(r=>r.subject===name && r.day===day && r.start===time.start);
+              if(!dup) rows.push({id:uid(),include:true,subject:name,day,start:time.start,end:time.end,room,type,instructor:""});
+            });
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // --- Mode 2: Weekly grid format (MONDAY heading, then class entries) ---
+  // Only run if Mode 1 found nothing
+  if(rows.length === 0){
+    const DAY_HEADER_RE = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)$/i;
+    let curDay = null;
+    for(let i=0; i<lines.length; i++){
+      const line = lines[i];
+      if(DAY_HEADER_RE.test(line)){
+        curDay = line.charAt(0).toUpperCase() + line.slice(1).toLowerCase();
+        continue;
+      }
+      if(!curDay) continue;
+      if(/NO\s+CLASSES?/i.test(line)){ continue; }
+      const timeMatch = line.match(TIME_RE);
+      if(timeMatch){
+        const time = parseTimeRange(timeMatch[1]);
+        if(!time) continue;
+        const remainder = line.replace(timeMatch[1],"").trim();
+        const roomMatch = remainder.match(ROOM_RE);
+        const room = roomMatch ? roomMatch[1] : "";
+        let type = "Face to Face";
+        if(/ZOOM/i.test(remainder)) type = "Zoom";
+        else if(/ONLINE/i.test(remainder)) type = "Online";
+        // Subject is the non-room, non-time, non-type text
+        let subj = remainder.replace(ROOM_RE,"").replace(/ZOOM|FACE\s*TO\s*FACE|ONLINE|GYM|LEC|LAB/gi,"").replace(/\s+/g," ").trim();
+        // Look ahead for subject name if this line has no text
+        if(!subj && lines[i+1] && !/\d{1,2}:\d{2}/.test(lines[i+1])){
+          subj = lines[i+1].trim();
+        }
+        if(!subj) subj = "Unknown";
+        rows.push({id:uid(),include:true,subject:subj,day:curDay,start:time.start,end:time.end,room,type,instructor:""});
+      }
+    }
+  }
+
+  // Deduplicate
+  const seen = new Set();
+  return rows.filter(r=>{
+    const k = r.day+"|"+r.start+"|"+r.subject.toUpperCase().slice(0,10);
+    if(seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
 const AI_KEY_STORAGE   = "coursework.ai_key";
 const AI_PROV_STORAGE  = "coursework.ai_provider";
+
 
 // vision:true  = sends image/PDF directly to the API
 // vision:false = text-only; runs Tesseract OCR first, sends extracted text
 // free:true    = has a free tier (no credit card required for basic use)
 const AI_PROVIDERS = {
 
-  /* ---- VISION PROVIDERS (can read images/PDF directly) ---- */
+
+
+/* ---- VISION PROVIDERS (can read images/PDF directly) ---- */
 
   gemini: {
     label: "Google Gemini 2.0 Flash [FREE]",
@@ -1846,16 +2078,30 @@ function openImportImageModal(){
     } else {
       dropZoneEl.appendChild(el("img", {class:"import-preview", src:imgData.dataUrl}));
     }
-    prog.show(); prog.set(10, "Sending to AI...");
+    prog.show();
     try{
-      extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
+      if(getApiKey()){
+        prog.set(10, "Sending to AI...");
+        extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
+      } else {
+        // No API key — local OCR + ICCT-aware parser
+        prog.set(10, "No API key — using local OCR...");
+        await loadTesseract();
+        const dataUrl = "data:" + imgData.mediaType + ";base64," + imgData.base64;
+        const { data } = await window.Tesseract.recognize(dataUrl, "eng", {
+          logger: m=>{ if(m.status==="recognizing text") prog.set(15 + Math.round(m.progress*65), "Reading... " + Math.round(m.progress*100) + "%"); }
+        });
+        prog.set(85, "Parsing schedule...");
+        extractedRows = parseScheduleText(data.text || "");
+        if(extractedRows.length === 0) toast("Couldn't detect classes. Try adding a free API key for better results.");
+      }
       prog.set(100, "Done!");
       setTimeout(()=>prog.hide(), 600);
       renderScheduleResults();
     }catch(err){
       if(err.message === "cancelled"){ prog.hide(); return; }
       console.error(err);
-      toast(err.message || "Analysis failed. Try a clearer image.");
+      toast(err.message || "Analysis failed. Try a clearer image or PDF.");
       prog.hide();
     }
   });
