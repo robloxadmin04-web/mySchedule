@@ -1180,6 +1180,302 @@ function resetData(){
 }
 
 /* =========================================================
+   IMPORT SCHEDULE FROM IMAGE (client-side OCR, no backend)
+========================================================= */
+let _tesseractLoading = null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(_tesseractLoading) return _tesseractLoading;
+  _tesseractLoading = new Promise((resolve, reject)=>{
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = ()=>resolve();
+    s.onerror = ()=>reject(new Error("Could not load OCR engine. Check your internet connection."));
+    document.head.appendChild(s);
+  });
+  return _tesseractLoading;
+}
+
+const DAY_TOKENS = {
+  "MONDAY":"Monday","MON":"Monday","M":"Monday",
+  "TUESDAY":"Tuesday","TUES":"Tuesday","TUE":"Tuesday","T":"Tuesday",
+  "WEDNESDAY":"Wednesday","WED":"Wednesday","W":"Wednesday",
+  "THURSDAY":"Thursday","THURS":"Thursday","THU":"Thursday","TH":"Thursday",
+  "FRIDAY":"Friday","FRI":"Friday","F":"Friday",
+  "SATURDAY":"Saturday","SAT":"Saturday","S":"Saturday","SA":"Saturday",
+  "SUNDAY":"Sunday","SUN":"Sunday","SU":"Sunday"
+};
+const DAY_HEADER_RE = /\b(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\b/i;
+const TIME_RANGE_RE = /(\d{1,2})[:.]?(\d{2})?\s*(AM|PM)?\s*[-–—to]{1,3}\s*(\d{1,2})[:.]?(\d{2})?\s*(AM|PM)?/i;
+const NO_CLASS_RE = /\bNO\s+CLASSES?\b/i;
+const ROOM_RE = /\b([A-Z]{1,4}\d[\w.\-]*|ROOM\s*\d+\w*|RM\.?\s*\d+\w*)\b/;
+
+function to24h(h, m, period){
+  h = Number(h); m = m ? Number(m) : 0;
+  if(period){
+    const p = period.toUpperCase();
+    if(p==="PM" && h!==12) h+=12;
+    if(p==="AM" && h===12) h=0;
+  }
+  if(h>23) h=23;
+  return `${pad2(h)}:${pad2(m)}`;
+}
+
+function detectClassType(line){
+  const l = line.toUpperCase();
+  if(l.includes("ZOOM") || l.includes("ONLINE") || l.includes("GMEET") || l.includes("GOOGLE MEET")) return "Zoom";
+  if(l.includes("FACE") && l.includes("FACE")) return "Face to Face";
+  if(l.includes("GYM")) return "Face to Face";
+  return state.settings.defaultClassType;
+}
+
+const TYPE_LINE_RE = /^(ZOOM|ONLINE|GOOGLE MEET|GMEET|FACE\s*TO\s*FACE|FACE-TO-FACE|GYM(\s*\/\s*FACE-?TO-?FACE)?)$/i;
+const ROOM_LINE_RE = /^(ROOM\s*\d+\w*|RM\.?\s*\d+\w*|[A-Z]{1,4}\d[\w.\-]*)$/i;
+
+/**
+ * Parses raw OCR text into candidate class rows.
+ * Schedule graphics from most schools render each class as a cluster of lines:
+ *   [optional] a DAY heading line
+ *   a TIME RANGE line (e.g. "7:30 AM-9:00 AM") — may appear before or after the subject
+ *   one or more SUBJECT NAME line(s) (often wrapped across 2 lines)
+ *   a TYPE line (Zoom / Face to Face / Gym) and/or a ROOM code line (e.g. "B1.24")
+ * This walks the lines once, buffering pieces (time / subject / type / room) and
+ * flushing a class row whenever a new time range or day heading starts a fresh cluster.
+ */
+function parseScheduleText(rawText){
+  const lines = rawText.split("\n").map(l=>l.trim()).filter(Boolean);
+  const rows = [];
+  let currentDay = null;
+
+  let buf = null; // { start, end, subjectParts:[], type, room }
+  function flush(){
+    if(buf && buf.start && buf.end && buf.subjectParts.length && currentDay){
+      const subject = buf.subjectParts.join(" ").replace(/\s+/g," ").trim();
+      rows.push({
+        id: uid(), include:true, day: currentDay, subject,
+        start: buf.start, end: buf.end, room: buf.room || "",
+        type: buf.type || state.settings.defaultClassType
+      });
+    }
+    buf = null;
+  }
+
+  for(let i=0;i<lines.length;i++){
+    const line = lines[i];
+
+    const dayMatch = line.match(DAY_HEADER_RE);
+    if(dayMatch && line.replace(dayMatch[0],"").trim().length < 3){
+      flush();
+      currentDay = DAY_TOKENS[dayMatch[1].toUpperCase()] || dayMatch[1];
+      continue;
+    }
+
+    if(NO_CLASS_RE.test(line)){ flush(); continue; }
+
+    const timeMatch = line.match(TIME_RANGE_RE);
+    if(timeMatch){
+      flush(); // a new time range starts a new class cluster
+      const start = to24h(timeMatch[1], timeMatch[2], timeMatch[3] || timeMatch[6]);
+      const end = to24h(timeMatch[4], timeMatch[5], timeMatch[6] || timeMatch[3]);
+      buf = { start, end, subjectParts: [], type:null, room:null };
+      // Same line might also contain trailing subject/room text (table-row style)
+      const remainder = line.replace(timeMatch[0], "").replace(/^[|\-–:]+|[|\-–:]+$/g,"").trim();
+      if(remainder){
+        const roomMatch = remainder.match(ROOM_RE);
+        if(roomMatch) buf.room = roomMatch[0];
+        let subj = remainder.replace(ROOM_RE,"").replace(/FACE\s*TO\s*FACE|ZOOM|ONLINE/ig,"").trim();
+        if(subj) buf.subjectParts.push(subj);
+        if(/ZOOM|FACE\s*TO\s*FACE|ONLINE|GYM/i.test(remainder)) buf.type = detectClassType(remainder);
+      }
+      continue;
+    }
+
+    if(!buf) continue; // no open class cluster yet, ignore stray text (titles, headers, etc.)
+
+    if(TYPE_LINE_RE.test(line)){
+      buf.type = detectClassType(line);
+      continue;
+    }
+    if(ROOM_LINE_RE.test(line) && !/^[A-Z]{2,}$/i.test(line)){
+      buf.room = line;
+      continue;
+    }
+    if(/[A-Za-z]{2,}/.test(line)){
+      buf.subjectParts.push(line);
+    }
+  }
+  flush();
+
+  // De-dupe identical rows
+  const seen = new Set();
+  return rows.filter(r=>{
+    const key = `${r.day}|${r.start}|${r.end}|${r.subject.toUpperCase()}`;
+    if(seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+function openImportImageModal(){
+  let extractedRows = [];
+  let imgDataUrl = null;
+
+  const dropZone = el("div", {class:"import-drop", id:"imp-drop"}, [
+    el("div", {class:"imp-icon"}, ["📷"]),
+    el("p", {}, [el("strong",{},["Click to upload"]), " or drag a photo/screenshot of your class schedule"]),
+    el("p", {class:"small muted"}, ["JPG or PNG · processed entirely in your browser"]),
+    el("input", {type:"file", accept:"image/*", id:"imp-file"})
+  ]);
+
+  const progressWrap = el("div", {class:"import-progress-wrap hidden", id:"imp-progress-wrap"}, [
+    el("div", {class:"import-progress-bar"}, [ el("div", {class:"import-progress-fill", id:"imp-progress-fill"}) ]),
+    el("div", {class:"import-progress-label", id:"imp-progress-label"}, ["Reading image…"])
+  ]);
+
+  const resultsWrap = el("div", {class:"hidden", id:"imp-results"});
+
+  const body = el("div", {}, [ dropZone, progressWrap, resultsWrap ]);
+  openModal("Import Schedule from Image", body);
+
+  function setProgress(pct, label){
+    $("#imp-progress-fill").style.width = pct+"%";
+    if(label) $("#imp-progress-label").textContent = label;
+  }
+
+  async function handleFile(file){
+    if(!file || !file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    const reader = new FileReader();
+    reader.onload = async (e)=>{
+      imgDataUrl = e.target.result;
+      dropZone.innerHTML = "";
+      dropZone.appendChild(el("img", {class:"import-preview", src:imgDataUrl}));
+      $("#imp-progress-wrap").classList.remove("hidden");
+      setProgress(5, "Loading OCR engine…");
+      try{
+        await loadTesseract();
+        setProgress(15, "Reading image…");
+        const { data } = await window.Tesseract.recognize(imgDataUrl, "eng", {
+          logger: (m)=>{
+            if(m.status === "recognizing text" && m.progress != null){
+              setProgress(15 + Math.round(m.progress*75), "Reading image… " + Math.round(m.progress*100) + "%");
+            }
+          }
+        });
+        setProgress(95, "Parsing schedule…");
+        extractedRows = parseScheduleText(data.text || "");
+        setProgress(100, "Done");
+        renderResults();
+      }catch(err){
+        console.error(err);
+        toast(err.message || "OCR failed. Please try a clearer image.");
+        $("#imp-progress-wrap").classList.add("hidden");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  dropZone.addEventListener("click", (e)=>{ if(e.target.tagName!=="INPUT") $("#imp-file").click(); });
+  $("#imp-file", dropZone).addEventListener("change", (e)=> handleFile(e.target.files[0]));
+  ["dragover","dragenter"].forEach(evt=> dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add("dragover"); }));
+  ["dragleave","drop"].forEach(evt=> dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.remove("dragover"); }));
+  dropZone.addEventListener("drop", (e)=>{ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+  function makeRowEl(r){
+    const tr = el("tr", {"data-id": r.id, class: r.include ? "" : "row-excluded"});
+    const chk = el("input", {type:"checkbox"}); chk.checked = r.include;
+    chk.addEventListener("change", ()=>{ r.include = chk.checked; tr.classList.toggle("row-excluded", !r.include); });
+
+    const subjInput = input("text", r.subject, "Subject name");
+    subjInput.addEventListener("input", ()=> r.subject = subjInput.value);
+
+    const daySelect = select(DAYS, r.day);
+    daySelect.addEventListener("change", ()=> r.day = daySelect.value);
+
+    const startInput = input("time", r.start); startInput.addEventListener("input", ()=> r.start = startInput.value);
+    const endInput = input("time", r.end); endInput.addEventListener("input", ()=> r.end = endInput.value);
+
+    const typeSelect = select(state.settings.classTypes, r.type);
+    typeSelect.addEventListener("change", ()=> r.type = typeSelect.value);
+
+    const roomInput = input("text", r.room, "Room");
+    roomInput.addEventListener("input", ()=> r.room = roomInput.value);
+
+    const removeBtn = el("button", {class:"import-row-remove", title:"Remove row", onclick:()=>{
+      extractedRows = extractedRows.filter(x=>x.id!==r.id);
+      tr.remove();
+    }}, ["✕"]);
+
+    tr.appendChild(el("td",{},[chk]));
+    tr.appendChild(el("td",{},[subjInput]));
+    tr.appendChild(el("td",{},[daySelect]));
+    tr.appendChild(el("td",{},[startInput]));
+    tr.appendChild(el("td",{},[endInput]));
+    tr.appendChild(el("td",{},[typeSelect]));
+    tr.appendChild(el("td",{},[roomInput]));
+    tr.appendChild(el("td",{},[removeBtn]));
+    return tr;
+  }
+
+  function renderResults(){
+    resultsWrap.innerHTML = "";
+    resultsWrap.classList.remove("hidden");
+
+    if(extractedRows.length===0){
+      resultsWrap.appendChild(el("div",{class:"import-hint"}, [
+        "Couldn't confidently detect any classes in that image. You can add a row manually below, or try a clearer / less cropped photo."
+      ]));
+    } else {
+      resultsWrap.appendChild(el("p", {class:"import-hint"}, [
+        `Found ${extractedRows.length} possible ${extractedRows.length===1?"class":"classes"}. Review and fix anything OCR got wrong, uncheck what you don't want, then import.`
+      ]));
+    }
+
+    const table = el("table", {class:"import-table"});
+    const thead = el("thead", {}, [ el("tr", {}, [
+      el("th",{},["✓"]), el("th",{},["Subject"]), el("th",{},["Day"]), el("th",{},["Start"]),
+      el("th",{},["End"]), el("th",{},["Type"]), el("th",{},["Room"]), el("th",{},[""])
+    ]) ]);
+    const tbody = el("tbody", {id:"imp-tbody"});
+    extractedRows.forEach(r=> tbody.appendChild(makeRowEl(r)));
+    table.appendChild(thead); table.appendChild(tbody);
+    resultsWrap.appendChild(el("div", {class:"import-table-wrap"}, [table]));
+
+    const addRowBtn = el("button", {class:"btn btn-outline import-add-row", onclick:()=>{
+      const r = { id:uid(), include:true, day:todayName(), subject:"", start:"08:00", end:"09:00", room:"", type: state.settings.defaultClassType };
+      extractedRows.push(r);
+      tbody.appendChild(makeRowEl(r));
+    }}, ["+ Add row"]);
+    resultsWrap.appendChild(addRowBtn);
+
+    resultsWrap.appendChild(el("div", {class:"modal-actions"}, [
+      el("button", {class:"btn btn-ghost", onclick:closeModal}, ["Cancel"]),
+      el("div", {class:"modal-actions-right"}, [
+        el("button", {class:"btn btn-primary", onclick:()=>{
+          const toImport = extractedRows.filter(r=>r.include && r.subject.trim() && r.day && r.start && r.end);
+          if(toImport.length===0){ toast("Nothing selected to import."); return; }
+          let added = 0;
+          toImport.forEach(r=>{
+            const name = r.subject.trim();
+            let subj = state.subjects.find(s=>s.name.toLowerCase()===name.toLowerCase());
+            if(!subj){
+              subj = { id:uid(), name, code:"", instructor:"", room:r.room.trim(), schedule:"", description:"", notes:"", priority:"Medium" };
+              state.subjects.push(subj);
+            }
+            state.classes.push({
+              id: uid(), subject: subj.id, day: r.day, start: r.start, end: r.end,
+              location: r.room.trim(), type: r.type || state.settings.defaultClassType,
+              instructor:"", room:r.room.trim(), notes:"Imported from image"
+            });
+            added++;
+          });
+          saveState(); renderAll(); closeModal();
+          toast(`Imported ${added} class${added===1?"":"es"}.`);
+        }}, ["Import Selected"])
+      ])
+    ]));
+  }
+}
+
+/* =========================================================
    SEARCH
 ========================================================= */
 function runSearch(term){
@@ -1293,6 +1589,7 @@ function wireEvents(){
     else if(action==="add-note") openNoteModal();
     else if(action==="add-file") openFileModal();
     else if(action==="start-focus"){ switchView("focus"); }
+    else if(action==="import-image") openImportImageModal();
   });
 
   // task filters
