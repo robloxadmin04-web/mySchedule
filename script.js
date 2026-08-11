@@ -1189,7 +1189,7 @@ function loadJsPdf(){
   return _jspdfLoading;
 }
 
-async function exportData(){
+async function exportDataPdf(){
   toast("Generating PDF...");
   try{
     await loadJsPdf();
@@ -1315,29 +1315,39 @@ async function exportData(){
   }
 }
 
-// Also keep JSON export for backup purposes
-function exportDataJson(){
+// Full JSON backup — transferable across devices
+function exportData(){
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = "coursework-backup.json";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast("JSON backup exported.");
+  toast("Backup exported. Save this JSON file to import on another device.");
 }
 function importData(file){
   const reader = new FileReader();
   reader.onload = (e)=>{
     try{
       const parsed = JSON.parse(e.target.result);
-      state = deepMerge(defaultState(), parsed);
-      saveState();
-      applyAppearance();
-      fillSettingsForm();
-      renderAll();
-      toast("Data imported.");
+      if(!parsed || typeof parsed !== "object" || (!parsed.subjects && !parsed.classes && !parsed.settings)){
+        toast("This doesn't look like a mySchedule backup file.");
+        return;
+      }
+      confirmModal("Restore backup? This will replace all current data on this device.", ()=>{
+        state = deepMerge(defaultState(), parsed);
+        saveState();
+        applyAppearance();
+        fillSettingsForm();
+        renderAll();
+        const counts = [];
+        if(state.subjects?.length) counts.push(state.subjects.length + " subjects");
+        if(state.classes?.length)  counts.push(state.classes.length + " classes");
+        if(state.tasks?.length)    counts.push(state.tasks.length + " tasks");
+        toast("Restored: " + (counts.join(", ") || "backup imported."));
+      });
     }catch(err){
-      toast("Import failed — invalid file.");
+      toast("Import failed — invalid or corrupted JSON file.");
     }
   };
   reader.readAsText(file);
@@ -2817,9 +2827,11 @@ function wireEvents(){
   // settings
   $("#btn-save-settings").addEventListener("click", saveSettingsForm);
   $("#btn-export").addEventListener("click", exportData);
-  // "Import" button now opens the AI/local image import modal (schedule import)
-  $("#btn-import").addEventListener("click", ()=>openImportImageModal());
-  // Keep hidden file input in case JSON restore is needed via drag-drop later
+  // Export = full JSON backup (transferable to other devices)
+  // Export as PDF = printable summary (not restorable)
+  const btnPdf = $("#btn-export-pdf");
+  if(btnPdf) btnPdf.addEventListener("click", exportDataPdf);
+  $("#btn-import").addEventListener("click", ()=>$("#import-file").click());
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
 }
