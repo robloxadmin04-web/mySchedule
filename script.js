@@ -1189,30 +1189,27 @@ function getApiKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ""; }
 function saveApiKey(key){ localStorage.setItem(AI_KEY_STORAGE, key.trim()); }
 
 /**
- * Opens a small modal asking the user for their Anthropic API key.
- * Resolves with the key string, or rejects if cancelled.
+ * Opens a modal asking the user for their AI API key.
+ * Accepts any key format (Anthropic, OpenAI, Gemini, etc.).
  */
 function promptForApiKey(){
   return new Promise((resolve, reject)=>{
     const existing = getApiKey();
-    const keyInput = input("password", existing, "sk-ant-...");
+    const keyInput = input("password", existing, "Paste your API key here...");
     keyInput.style.fontFamily = "monospace";
     keyInput.style.fontSize = "0.85rem";
 
     const body = el("div", {}, [
       el("p", {class:"small"}, [
-        "This app analyzes images using the Claude AI API. Paste your Anthropic API key below — it stays in your browser and is never sent anywhere except directly to api.anthropic.com."
+        "Paste your AI API key below. It stays in your browser and is only used to analyze images."
       ]),
-      el("p", {class:"small muted"}, [
-        "Get a key at: ", el("a", {href:"https://console.anthropic.com/", target:"_blank"}, ["console.anthropic.com"])
-      ]),
-      field("Anthropic API Key", keyInput),
+      field("API Key", keyInput),
       el("div", {class:"modal-actions"}, [
         el("button", {class:"btn btn-ghost", onclick:()=>{ closeModal(); reject(new Error("cancelled")); }}, ["Cancel"]),
         el("div", {class:"modal-actions-right"}, [
           el("button", {class:"btn btn-primary", onclick:()=>{
             const k = keyInput.value.trim();
-            if(!k.startsWith("sk-ant-")){ toast("That does not look like a valid Anthropic API key."); return; }
+            if(!k){ toast("Please enter an API key."); return; }
             saveApiKey(k);
             closeModal();
             resolve(k);
@@ -1226,7 +1223,7 @@ function promptForApiKey(){
 
 async function requireApiKey(){
   const key = getApiKey();
-  if(key && key.startsWith("sk-ant-")) return key;
+  if(key) return key;
   return promptForApiKey();
 }
 
