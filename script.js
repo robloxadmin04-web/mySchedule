@@ -1180,300 +1180,588 @@ function resetData(){
 }
 
 /* =========================================================
-   IMPORT SCHEDULE FROM IMAGE (client-side OCR, no backend)
-========================================================= */
-let _tesseractLoading = null;
-function loadTesseract(){
-  if(window.Tesseract) return Promise.resolve();
-  if(_tesseractLoading) return _tesseractLoading;
-  _tesseractLoading = new Promise((resolve, reject)=>{
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
-    s.onload = ()=>resolve();
-    s.onerror = ()=>reject(new Error("Could not load OCR engine. Check your internet connection."));
-    document.head.appendChild(s);
+   AI IMAGE ANALYSIS — Claude Vision API
+   ========================================================= */
+
+const AI_KEY_STORAGE = "coursework.anthropic_key";
+
+function getApiKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ""; }
+function saveApiKey(key){ localStorage.setItem(AI_KEY_STORAGE, key.trim()); }
+
+/**
+ * Opens a small modal asking the user for their Anthropic API key.
+ * Resolves with the key string, or rejects if cancelled.
+ */
+function promptForApiKey(){
+  return new Promise((resolve, reject)=>{
+    const existing = getApiKey();
+    const keyInput = input("password", existing, "sk-ant-...");
+    keyInput.style.fontFamily = "monospace";
+    keyInput.style.fontSize = "0.85rem";
+
+    const body = el("div", {}, [
+      el("p", {class:"small"}, [
+        "This app analyzes images using the Claude AI API. Paste your Anthropic API key below — it stays in your browser and is never sent anywhere except directly to api.anthropic.com."
+      ]),
+      el("p", {class:"small muted"}, [
+        "Get a key at: ", el("a", {href:"https://console.anthropic.com/", target:"_blank"}, ["console.anthropic.com"])
+      ]),
+      field("Anthropic API Key", keyInput),
+      el("div", {class:"modal-actions"}, [
+        el("button", {class:"btn btn-ghost", onclick:()=>{ closeModal(); reject(new Error("cancelled")); }}, ["Cancel"]),
+        el("div", {class:"modal-actions-right"}, [
+          el("button", {class:"btn btn-primary", onclick:()=>{
+            const k = keyInput.value.trim();
+            if(!k.startsWith("sk-ant-")){ toast("That does not look like a valid Anthropic API key."); return; }
+            saveApiKey(k);
+            closeModal();
+            resolve(k);
+          }}, ["Save & Continue"])
+        ])
+      ])
+    ]);
+    openModal("Set AI API Key", body);
   });
-  return _tesseractLoading;
 }
 
-const DAY_TOKENS = {
-  "MONDAY":"Monday","MON":"Monday","M":"Monday",
-  "TUESDAY":"Tuesday","TUES":"Tuesday","TUE":"Tuesday","T":"Tuesday",
-  "WEDNESDAY":"Wednesday","WED":"Wednesday","W":"Wednesday",
-  "THURSDAY":"Thursday","THURS":"Thursday","THU":"Thursday","TH":"Thursday",
-  "FRIDAY":"Friday","FRI":"Friday","F":"Friday",
-  "SATURDAY":"Saturday","SAT":"Saturday","S":"Saturday","SA":"Saturday",
-  "SUNDAY":"Sunday","SUN":"Sunday","SU":"Sunday"
-};
-const DAY_HEADER_RE = /\b(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\b/i;
-const TIME_RANGE_RE = /(\d{1,2})[:.]?(\d{2})?\s*(AM|PM)?\s*[-–—to]{1,3}\s*(\d{1,2})[:.]?(\d{2})?\s*(AM|PM)?/i;
-const NO_CLASS_RE = /\bNO\s+CLASSES?\b/i;
-const ROOM_RE = /\b([A-Z]{1,4}\d[\w.\-]*|ROOM\s*\d+\w*|RM\.?\s*\d+\w*)\b/;
+async function requireApiKey(){
+  const key = getApiKey();
+  if(key && key.startsWith("sk-ant-")) return key;
+  return promptForApiKey();
+}
 
-function to24h(h, m, period){
-  h = Number(h); m = m ? Number(m) : 0;
-  if(period){
-    const p = period.toUpperCase();
-    if(p==="PM" && h!==12) h+=12;
-    if(p==="AM" && h===12) h=0;
+/**
+ * Calls Claude Vision API with a base64 image and prompts.
+ */
+async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userPrompt){
+  const key = await requireApiKey();
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-opus-4-5",
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+          { type: "text", text: userPrompt }
+        ]
+      }]
+    })
+  });
+
+  if(!response.ok){
+    const err = await response.json().catch(()=>({}));
+    const msg = err?.error?.message || ("API error " + response.status);
+    if(response.status === 401) throw new Error("Invalid API key. Click the key icon to update it.");
+    throw new Error(msg);
   }
-  if(h>23) h=23;
-  return `${pad2(h)}:${pad2(m)}`;
+
+  const data = await response.json();
+  return data.content.map(b=> b.type==="text" ? b.text : "").join("").trim();
 }
 
-function detectClassType(line){
-  const l = line.toUpperCase();
-  if(l.includes("ZOOM") || l.includes("ONLINE") || l.includes("GMEET") || l.includes("GOOGLE MEET")) return "Zoom";
-  if(l.includes("FACE") && l.includes("FACE")) return "Face to Face";
-  if(l.includes("GYM")) return "Face to Face";
+function readFileAsBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const dataUrl = e.target.result;
+      const [header, base64] = dataUrl.split(",");
+      const mediaType = (header.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
+      resolve({ base64, mediaType, dataUrl });
+    };
+    reader.onerror = ()=>reject(new Error("Could not read file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------------------------------------------------------
+   SCHEDULE PARSING — AI-powered
+--------------------------------------------------------- */
+
+const SCHEDULE_SYSTEM_PROMPT = `You are an expert at reading Filipino college/university class schedule images (including printed COR, enrollment forms, and digital schedule screenshots).
+Extract all class schedule entries and return ONLY a valid JSON array, no markdown, no explanation, no extra text.
+
+Each entry must have exactly these fields:
+{
+  "subject": "Full subject name",
+  "day": "Monday" or "Tuesday" or "Wednesday" or "Thursday" or "Friday" or "Saturday" or "Sunday",
+  "start": "HH:MM in 24-hour format",
+  "end": "HH:MM in 24-hour format",
+  "room": "room code or empty string",
+  "type": "Face to Face" or "Zoom" or "Online" or "Other",
+  "instructor": "instructor name or empty string"
+}
+
+Important rules:
+- Convert all times to 24-hour (e.g. 7:30 AM becomes 07:30, 1:00 PM becomes 13:00)
+- If a subject meets on multiple days, create one entry per day
+- Expand day abbreviations: M=Monday, T=Tuesday, W=Wednesday, TH/Th=Thursday, F=Friday, S/Sa=Saturday
+- If modality is not shown, default to "Face to Face"
+- Return [] if no schedule data is found
+- Return ONLY the raw JSON array`;
+
+async function parseScheduleWithAI(base64Data, mediaType){
+  const rawJson = await analyzeImageWithClaude(
+    base64Data, mediaType,
+    SCHEDULE_SYSTEM_PROMPT,
+    "Extract all class schedule entries from this image. Return ONLY a JSON array."
+  );
+
+  let parsed;
+  try{
+    const clean = rawJson.replace(/```json|```/gi,"").trim();
+    parsed = JSON.parse(clean);
+  }catch(e){
+    throw new Error("AI returned an unexpected format. Try a clearer image.");
+  }
+
+  if(!Array.isArray(parsed)) throw new Error("AI returned an unexpected format.");
+
+  return parsed.map(r=>({
+    id: uid(),
+    include: true,
+    subject: String(r.subject||"").trim(),
+    day: normalizeDay(String(r.day||"")),
+    start: normalizeTime(String(r.start||"08:00")),
+    end: normalizeTime(String(r.end||"09:00")),
+    room: String(r.room||"").trim(),
+    type: normalizeClassType(String(r.type||"")),
+    instructor: String(r.instructor||"").trim()
+  })).filter(r=> r.subject && r.day && r.start && r.end);
+}
+
+function normalizeDay(d){
+  const map = {
+    monday:"Monday", tuesday:"Tuesday", wednesday:"Wednesday",
+    thursday:"Thursday", friday:"Friday", saturday:"Saturday", sunday:"Sunday"
+  };
+  return map[d.toLowerCase()] || d;
+}
+function normalizeTime(t){
+  if(/^\d{1,2}:\d{2}$/.test(t)){
+    const [h,m] = t.split(":").map(Number);
+    return String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0");
+  }
+  return t;
+}
+function normalizeClassType(t){
+  const tl = t.toLowerCase();
+  if(tl.includes("zoom") || tl.includes("google meet") || tl.includes("gmeet")) return "Zoom";
+  if(tl.includes("online")) return "Online";
+  if(tl.includes("face")) return "Face to Face";
   return state.settings.defaultClassType;
 }
 
-const TYPE_LINE_RE = /^(ZOOM|ONLINE|GOOGLE MEET|GMEET|FACE\s*TO\s*FACE|FACE-TO-FACE|GYM(\s*\/\s*FACE-?TO-?FACE)?)$/i;
-const ROOM_LINE_RE = /^(ROOM\s*\d+\w*|RM\.?\s*\d+\w*|[A-Z]{1,4}\d[\w.\-]*)$/i;
+/* ---------------------------------------------------------
+   GRADE SCANNING — AI-powered
+--------------------------------------------------------- */
 
-/**
- * Parses raw OCR text into candidate class rows.
- * Schedule graphics from most schools render each class as a cluster of lines:
- *   [optional] a DAY heading line
- *   a TIME RANGE line (e.g. "7:30 AM-9:00 AM") — may appear before or after the subject
- *   one or more SUBJECT NAME line(s) (often wrapped across 2 lines)
- *   a TYPE line (Zoom / Face to Face / Gym) and/or a ROOM code line (e.g. "B1.24")
- * This walks the lines once, buffering pieces (time / subject / type / room) and
- * flushing a class row whenever a new time range or day heading starts a fresh cluster.
- */
-function parseScheduleText(rawText){
-  const lines = rawText.split("\n").map(l=>l.trim()).filter(Boolean);
-  const rows = [];
-  let currentDay = null;
+const GRADE_SYSTEM_PROMPT = `You are an expert at reading Filipino college/university grade sheets, report cards, and transcript images (including COR grades, class record screenshots, and grade printouts).
+Extract all grade entries and return ONLY a valid JSON array, no markdown, no explanation.
 
-  let buf = null; // { start, end, subjectParts:[], type, room }
-  function flush(){
-    if(buf && buf.start && buf.end && buf.subjectParts.length && currentDay){
-      const subject = buf.subjectParts.join(" ").replace(/\s+/g," ").trim();
-      rows.push({
-        id: uid(), include:true, day: currentDay, subject,
-        start: buf.start, end: buf.end, room: buf.room || "",
-        type: buf.type || state.settings.defaultClassType
-      });
-    }
-    buf = null;
-  }
-
-  for(let i=0;i<lines.length;i++){
-    const line = lines[i];
-
-    const dayMatch = line.match(DAY_HEADER_RE);
-    if(dayMatch && line.replace(dayMatch[0],"").trim().length < 3){
-      flush();
-      currentDay = DAY_TOKENS[dayMatch[1].toUpperCase()] || dayMatch[1];
-      continue;
-    }
-
-    if(NO_CLASS_RE.test(line)){ flush(); continue; }
-
-    const timeMatch = line.match(TIME_RANGE_RE);
-    if(timeMatch){
-      flush(); // a new time range starts a new class cluster
-      const start = to24h(timeMatch[1], timeMatch[2], timeMatch[3] || timeMatch[6]);
-      const end = to24h(timeMatch[4], timeMatch[5], timeMatch[6] || timeMatch[3]);
-      buf = { start, end, subjectParts: [], type:null, room:null };
-      // Same line might also contain trailing subject/room text (table-row style)
-      const remainder = line.replace(timeMatch[0], "").replace(/^[|\-–:]+|[|\-–:]+$/g,"").trim();
-      if(remainder){
-        const roomMatch = remainder.match(ROOM_RE);
-        if(roomMatch) buf.room = roomMatch[0];
-        let subj = remainder.replace(ROOM_RE,"").replace(/FACE\s*TO\s*FACE|ZOOM|ONLINE/ig,"").trim();
-        if(subj) buf.subjectParts.push(subj);
-        if(/ZOOM|FACE\s*TO\s*FACE|ONLINE|GYM/i.test(remainder)) buf.type = detectClassType(remainder);
-      }
-      continue;
-    }
-
-    if(!buf) continue; // no open class cluster yet, ignore stray text (titles, headers, etc.)
-
-    if(TYPE_LINE_RE.test(line)){
-      buf.type = detectClassType(line);
-      continue;
-    }
-    if(ROOM_LINE_RE.test(line) && !/^[A-Z]{2,}$/i.test(line)){
-      buf.room = line;
-      continue;
-    }
-    if(/[A-Za-z]{2,}/.test(line)){
-      buf.subjectParts.push(line);
-    }
-  }
-  flush();
-
-  // De-dupe identical rows
-  const seen = new Set();
-  return rows.filter(r=>{
-    const key = `${r.day}|${r.start}|${r.end}|${r.subject.toUpperCase()}`;
-    if(seen.has(key)) return false;
-    seen.add(key); return true;
-  });
+Each entry must have:
+{
+  "subject": "Full subject name",
+  "score": (number — the actual grade/score value),
+  "max": (number — maximum possible, usually 100),
+  "category": "Quiz" or "Exam" or "Assignment" or "Activity" or "Project" or "Attendance" or "Final Grade" or "Other",
+  "weight": (number — percentage weight if shown, else 0)
 }
 
+Rules:
+- For final grade report cards: set category to "Final Grade", score = the grade, max = 100
+- Prelim/Midterm/Finals grades → category = "Exam"
+- If weight column is absent, set weight = 0
+- Return [] if nothing found
+- Return ONLY the raw JSON array`;
+
+async function parseGradesWithAI(base64Data, mediaType){
+  const rawJson = await analyzeImageWithClaude(
+    base64Data, mediaType,
+    GRADE_SYSTEM_PROMPT,
+    "Extract all grade entries from this image. Return ONLY a JSON array."
+  );
+
+  let parsed;
+  try{
+    const clean = rawJson.replace(/```json|```/gi,"").trim();
+    parsed = JSON.parse(clean);
+  }catch(e){
+    throw new Error("AI returned an unexpected format. Try a clearer image.");
+  }
+
+  if(!Array.isArray(parsed)) throw new Error("AI returned unexpected format.");
+  return parsed.map(r=>({
+    subject: String(r.subject||"").trim(),
+    score: Number(r.score)||0,
+    max: Number(r.max)||100,
+    category: String(r.category||"Other").trim(),
+    weight: Number(r.weight)||0
+  })).filter(r=>r.subject);
+}
+
+/* ---------------------------------------------------------
+   SUBJECT SCANNING — AI-powered
+--------------------------------------------------------- */
+
+const SUBJECT_SYSTEM_PROMPT = `You are an expert at reading Filipino college enrollment forms, class cards, and COR (Certificate of Registration) images.
+Extract all subjects/courses listed and return ONLY a valid JSON array, no markdown, no explanation.
+
+Each entry:
+{
+  "name": "Full subject name",
+  "code": "Subject code like IT101 or empty string",
+  "instructor": "Instructor name or empty string",
+  "room": "Room or empty string",
+  "schedule": "Schedule text or empty string (e.g. MWF 7:30-9:00 AM)"
+}
+
+Return ONLY the raw JSON array.`;
+
+async function parseSubjectsWithAI(base64Data, mediaType){
+  const rawJson = await analyzeImageWithClaude(
+    base64Data, mediaType,
+    SUBJECT_SYSTEM_PROMPT,
+    "Extract all subjects/courses from this enrollment form or class list. Return ONLY a JSON array."
+  );
+  let parsed;
+  try{
+    const clean = rawJson.replace(/```json|```/gi,"").trim();
+    parsed = JSON.parse(clean);
+  }catch(e){
+    throw new Error("AI returned an unexpected format. Try a clearer image.");
+  }
+  if(!Array.isArray(parsed)) throw new Error("AI returned unexpected format.");
+  return parsed.map(r=>({
+    name: String(r.name||"").trim(),
+    code: String(r.code||"").trim(),
+    instructor: String(r.instructor||"").trim(),
+    room: String(r.room||"").trim(),
+    schedule: String(r.schedule||"").trim()
+  })).filter(r=>r.name);
+}
+/* =========================================================
+   AI-POWERED IMPORT MODALS
+========================================================= */
+
+function buildDropZone(labelText, subText){
+  const fileInput = el("input", {type:"file", accept:"image/*", style:"display:none"});
+  const dropZone = el("div", {class:"import-drop"}, [
+    el("div", {class:"imp-icon"}, ["\u{1f4f7}"]),
+    el("p", {}, [el("strong",{},["Click to upload"]), " or drag & drop"]),
+    el("p", {class:"small muted"}, [labelText]),
+    el("p", {class:"small muted"}, [subText || "Analyzed by Claude AI"]),
+    fileInput
+  ]);
+  dropZone.addEventListener("click", (e)=>{ if(e.target!==fileInput) fileInput.click(); });
+  ["dragover","dragenter"].forEach(evt=>dropZone.addEventListener(evt,(e)=>{ e.preventDefault(); dropZone.classList.add("dragover"); }));
+  ["dragleave","drop"].forEach(evt=>dropZone.addEventListener(evt,(e)=>{ e.preventDefault(); dropZone.classList.remove("dragover"); }));
+  const listeners = [];
+  fileInput.addEventListener("change",(e)=>{ if(e.target.files[0]){ listeners.forEach(fn=>fn(e.target.files[0])); }});
+  dropZone.addEventListener("drop",(e)=>{ if(e.dataTransfer.files[0]){ listeners.forEach(fn=>fn(e.dataTransfer.files[0])); }});
+  return { dropZoneEl: dropZone, onFile: (fn)=>listeners.push(fn) };
+}
+
+function buildProgressEl(){
+  const fill = el("div", {class:"import-progress-fill"});
+  const label = el("div", {class:"import-progress-label"}, ["Analyzing..."]);
+  const wrap = el("div", {class:"import-progress-wrap hidden"}, [
+    el("div", {class:"import-progress-bar"}, [fill]),
+    label
+  ]);
+  return {
+    wrap,
+    set(pct, msg){ fill.style.width=pct+"%"; if(msg) label.textContent=msg; },
+    show(){ wrap.classList.remove("hidden"); },
+    hide(){ wrap.classList.add("hidden"); }
+  };
+}
+
+function makeApiKeyBtn(){
+  return el("button", {
+    class:"btn btn-outline btn-sm",
+    style:"float:right;margin-bottom:8px;",
+    onclick: ()=>{ promptForApiKey().then(()=>toast("API key saved.")).catch(()=>{}); }
+  }, ["\uD83D\uDD11 API Key"]);
+}
+
+/* ------- SCHEDULE IMPORT ------- */
 function openImportImageModal(){
   let extractedRows = [];
-  let imgDataUrl = null;
+  const { dropZoneEl, onFile } = buildDropZone("Photo/screenshot of your class schedule or COR");
+  const prog = buildProgressEl();
+  const resultsWrap = el("div", {class:"hidden"});
 
-  const dropZone = el("div", {class:"import-drop", id:"imp-drop"}, [
-    el("div", {class:"imp-icon"}, ["📷"]),
-    el("p", {}, [el("strong",{},["Click to upload"]), " or drag a photo/screenshot of your class schedule"]),
-    el("p", {class:"small muted"}, ["JPG or PNG · processed entirely in your browser"]),
-    el("input", {type:"file", accept:"image/*", id:"imp-file"})
-  ]);
+  const body = el("div", {}, [makeApiKeyBtn(), dropZoneEl, prog.wrap, resultsWrap]);
+  openModal("Import Schedule from Image \u2014 AI", body);
 
-  const progressWrap = el("div", {class:"import-progress-wrap hidden", id:"imp-progress-wrap"}, [
-    el("div", {class:"import-progress-bar"}, [ el("div", {class:"import-progress-fill", id:"imp-progress-fill"}) ]),
-    el("div", {class:"import-progress-label", id:"imp-progress-label"}, ["Reading image…"])
-  ]);
-
-  const resultsWrap = el("div", {class:"hidden", id:"imp-results"});
-
-  const body = el("div", {}, [ dropZone, progressWrap, resultsWrap ]);
-  openModal("Import Schedule from Image", body);
-
-  function setProgress(pct, label){
-    $("#imp-progress-fill").style.width = pct+"%";
-    if(label) $("#imp-progress-label").textContent = label;
-  }
-
-  async function handleFile(file){
-    if(!file || !file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
-    const reader = new FileReader();
-    reader.onload = async (e)=>{
-      imgDataUrl = e.target.result;
-      dropZone.innerHTML = "";
-      dropZone.appendChild(el("img", {class:"import-preview", src:imgDataUrl}));
-      $("#imp-progress-wrap").classList.remove("hidden");
-      setProgress(5, "Loading OCR engine…");
-      try{
-        await loadTesseract();
-        setProgress(15, "Reading image…");
-        const { data } = await window.Tesseract.recognize(imgDataUrl, "eng", {
-          logger: (m)=>{
-            if(m.status === "recognizing text" && m.progress != null){
-              setProgress(15 + Math.round(m.progress*75), "Reading image… " + Math.round(m.progress*100) + "%");
-            }
-          }
-        });
-        setProgress(95, "Parsing schedule…");
-        extractedRows = parseScheduleText(data.text || "");
-        setProgress(100, "Done");
-        renderResults();
-      }catch(err){
-        console.error(err);
-        toast(err.message || "OCR failed. Please try a clearer image.");
-        $("#imp-progress-wrap").classList.add("hidden");
-      }
-    };
-    reader.readAsDataURL(file);
-  }
-
-  dropZone.addEventListener("click", (e)=>{ if(e.target.tagName!=="INPUT") $("#imp-file").click(); });
-  $("#imp-file", dropZone).addEventListener("change", (e)=> handleFile(e.target.files[0]));
-  ["dragover","dragenter"].forEach(evt=> dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add("dragover"); }));
-  ["dragleave","drop"].forEach(evt=> dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.remove("dragover"); }));
-  dropZone.addEventListener("drop", (e)=>{ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  onFile(async (file)=>{
+    if(!file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    dropZoneEl.innerHTML = "";
+    let imgData;
+    try{ imgData = await readFileAsBase64(file); }catch(e){ toast("Could not read file."); return; }
+    dropZoneEl.appendChild(el("img", {class:"import-preview", src:imgData.dataUrl}));
+    prog.show(); prog.set(10, "Sending to Claude AI...");
+    try{
+      prog.set(30, "Claude is reading your schedule...");
+      extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType);
+      prog.set(100, "Done!");
+      setTimeout(()=>prog.hide(), 600);
+      renderScheduleResults();
+    }catch(err){
+      if(err.message === "cancelled"){ prog.hide(); return; }
+      console.error(err);
+      toast(err.message || "Analysis failed. Try a clearer image.");
+      prog.hide();
+    }
+  });
 
   function makeRowEl(r){
-    const tr = el("tr", {"data-id": r.id, class: r.include ? "" : "row-excluded"});
+    const tr = el("tr", {class: r.include ? "" : "row-excluded"});
     const chk = el("input", {type:"checkbox"}); chk.checked = r.include;
-    chk.addEventListener("change", ()=>{ r.include = chk.checked; tr.classList.toggle("row-excluded", !r.include); });
-
-    const subjInput = input("text", r.subject, "Subject name");
-    subjInput.addEventListener("input", ()=> r.subject = subjInput.value);
-
-    const daySelect = select(DAYS, r.day);
-    daySelect.addEventListener("change", ()=> r.day = daySelect.value);
-
-    const startInput = input("time", r.start); startInput.addEventListener("input", ()=> r.start = startInput.value);
-    const endInput = input("time", r.end); endInput.addEventListener("input", ()=> r.end = endInput.value);
-
-    const typeSelect = select(state.settings.classTypes, r.type);
-    typeSelect.addEventListener("change", ()=> r.type = typeSelect.value);
-
-    const roomInput = input("text", r.room, "Room");
-    roomInput.addEventListener("input", ()=> r.room = roomInput.value);
-
-    const removeBtn = el("button", {class:"import-row-remove", title:"Remove row", onclick:()=>{
-      extractedRows = extractedRows.filter(x=>x.id!==r.id);
-      tr.remove();
-    }}, ["✕"]);
-
-    tr.appendChild(el("td",{},[chk]));
-    tr.appendChild(el("td",{},[subjInput]));
-    tr.appendChild(el("td",{},[daySelect]));
-    tr.appendChild(el("td",{},[startInput]));
-    tr.appendChild(el("td",{},[endInput]));
-    tr.appendChild(el("td",{},[typeSelect]));
-    tr.appendChild(el("td",{},[roomInput]));
-    tr.appendChild(el("td",{},[removeBtn]));
+    chk.addEventListener("change", ()=>{ r.include=chk.checked; tr.classList.toggle("row-excluded",!r.include); });
+    const subjInput = input("text", r.subject, "Subject name"); subjInput.addEventListener("input", ()=>r.subject=subjInput.value);
+    const daySelect = select(DAYS, r.day); daySelect.addEventListener("change", ()=>r.day=daySelect.value);
+    const startInput = input("time", r.start); startInput.addEventListener("input", ()=>r.start=startInput.value);
+    const endInput = input("time", r.end); endInput.addEventListener("input", ()=>r.end=endInput.value);
+    const typeSelect = select(state.settings.classTypes, r.type); typeSelect.addEventListener("change", ()=>r.type=typeSelect.value);
+    const roomInput = input("text", r.room, "Room"); roomInput.addEventListener("input", ()=>r.room=roomInput.value);
+    const removeBtn = el("button", {class:"import-row-remove", title:"Remove", onclick:()=>{
+      extractedRows=extractedRows.filter(x=>x.id!==r.id); tr.remove();
+    }}, ["\u2715"]);
+    [chk,subjInput,daySelect,startInput,endInput,typeSelect,roomInput,removeBtn].forEach(c=>tr.appendChild(el("td",{},[c])));
     return tr;
   }
 
-  function renderResults(){
-    resultsWrap.innerHTML = "";
-    resultsWrap.classList.remove("hidden");
-
+  function renderScheduleResults(){
+    resultsWrap.innerHTML=""; resultsWrap.classList.remove("hidden");
     if(extractedRows.length===0){
-      resultsWrap.appendChild(el("div",{class:"import-hint"}, [
-        "Couldn't confidently detect any classes in that image. You can add a row manually below, or try a clearer / less cropped photo."
-      ]));
+      resultsWrap.appendChild(el("div",{class:"import-hint"},["Claude couldn't detect any classes. Try a clearer image, or add rows manually below."]));
     } else {
-      resultsWrap.appendChild(el("p", {class:"import-hint"}, [
-        `Found ${extractedRows.length} possible ${extractedRows.length===1?"class":"classes"}. Review and fix anything OCR got wrong, uncheck what you don't want, then import.`
+      resultsWrap.appendChild(el("p",{class:"import-hint"},[
+        "Found " + extractedRows.length + " class" + (extractedRows.length===1?"":"es") + ". Review, edit if needed, then import."
       ]));
     }
-
-    const table = el("table", {class:"import-table"});
-    const thead = el("thead", {}, [ el("tr", {}, [
-      el("th",{},["✓"]), el("th",{},["Subject"]), el("th",{},["Day"]), el("th",{},["Start"]),
-      el("th",{},["End"]), el("th",{},["Type"]), el("th",{},["Room"]), el("th",{},[""])
-    ]) ]);
-    const tbody = el("tbody", {id:"imp-tbody"});
-    extractedRows.forEach(r=> tbody.appendChild(makeRowEl(r)));
+    const table=el("table",{class:"import-table"});
+    const thead=el("thead",{},[el("tr",{},[
+      el("th",[]),el("th",{},["Subject"]),el("th",{},["Day"]),
+      el("th",{},["Start"]),el("th",{},["End"]),el("th",{},["Type"]),el("th",{},["Room"]),el("th",[])
+    ])]);
+    const tbody=el("tbody");
+    extractedRows.forEach(r=>tbody.appendChild(makeRowEl(r)));
     table.appendChild(thead); table.appendChild(tbody);
-    resultsWrap.appendChild(el("div", {class:"import-table-wrap"}, [table]));
-
-    const addRowBtn = el("button", {class:"btn btn-outline import-add-row", onclick:()=>{
-      const r = { id:uid(), include:true, day:todayName(), subject:"", start:"08:00", end:"09:00", room:"", type: state.settings.defaultClassType };
-      extractedRows.push(r);
-      tbody.appendChild(makeRowEl(r));
-    }}, ["+ Add row"]);
+    resultsWrap.appendChild(el("div",{class:"import-table-wrap"},[table]));
+    const addRowBtn=el("button",{class:"btn btn-outline import-add-row",onclick:()=>{
+      const r={id:uid(),include:true,day:todayName(),subject:"",start:"08:00",end:"09:00",room:"",type:state.settings.defaultClassType,instructor:""};
+      extractedRows.push(r); tbody.appendChild(makeRowEl(r));
+    }},["+ Add row"]);
     resultsWrap.appendChild(addRowBtn);
-
-    resultsWrap.appendChild(el("div", {class:"modal-actions"}, [
-      el("button", {class:"btn btn-ghost", onclick:closeModal}, ["Cancel"]),
-      el("div", {class:"modal-actions-right"}, [
-        el("button", {class:"btn btn-primary", onclick:()=>{
-          const toImport = extractedRows.filter(r=>r.include && r.subject.trim() && r.day && r.start && r.end);
+    resultsWrap.appendChild(el("div",{class:"modal-actions"},[
+      el("button",{class:"btn btn-ghost",onclick:closeModal},["Cancel"]),
+      el("div",{class:"modal-actions-right"},[
+        el("button",{class:"btn btn-primary",onclick:()=>{
+          const toImport=extractedRows.filter(r=>r.include && r.subject.trim() && r.day && r.start && r.end);
           if(toImport.length===0){ toast("Nothing selected to import."); return; }
-          let added = 0;
+          let added=0;
           toImport.forEach(r=>{
-            const name = r.subject.trim();
-            let subj = state.subjects.find(s=>s.name.toLowerCase()===name.toLowerCase());
+            const name=r.subject.trim();
+            let subj=state.subjects.find(s=>s.name.toLowerCase()===name.toLowerCase());
             if(!subj){
-              subj = { id:uid(), name, code:"", instructor:"", room:r.room.trim(), schedule:"", description:"", notes:"", priority:"Medium" };
+              subj={id:uid(),name,code:"",instructor:r.instructor||"",room:r.room.trim(),schedule:"",description:"",notes:"",priority:"Medium"};
               state.subjects.push(subj);
+            } else {
+              if(!subj.instructor && r.instructor) subj.instructor=r.instructor;
+              if(!subj.room && r.room) subj.room=r.room.trim();
             }
             state.classes.push({
-              id: uid(), subject: subj.id, day: r.day, start: r.start, end: r.end,
-              location: r.room.trim(), type: r.type || state.settings.defaultClassType,
-              instructor:"", room:r.room.trim(), notes:"Imported from image"
+              id:uid(),subject:subj.id,day:r.day,start:r.start,end:r.end,
+              location:r.room.trim(),type:r.type||state.settings.defaultClassType,
+              instructor:r.instructor||"",room:r.room.trim(),notes:"Imported via AI"
             });
             added++;
           });
           saveState(); renderAll(); closeModal();
-          toast(`Imported ${added} class${added===1?"":"es"}.`);
-        }}, ["Import Selected"])
+          toast("Imported " + added + " class" + (added===1?"":"es") + ".");
+        }},["Import Selected"])
       ])
     ]));
   }
 }
+
+/* ------- GRADE IMPORT ------- */
+function openImportGradeModal(){
+  const { dropZoneEl, onFile } = buildDropZone("Photo of your grade sheet, report card, or class record");
+  const prog = buildProgressEl();
+  const resultsWrap = el("div", {class:"hidden"});
+
+  const body = el("div", {}, [makeApiKeyBtn(), dropZoneEl, prog.wrap, resultsWrap]);
+  openModal("Import Grades from Image \u2014 AI", body);
+
+  onFile(async (file)=>{
+    if(!file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    dropZoneEl.innerHTML="";
+    let imgData;
+    try{ imgData=await readFileAsBase64(file); }catch(e){ toast("Could not read file."); return; }
+    dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
+    prog.show(); prog.set(20,"Claude is reading your grade sheet...");
+    let gradeRows=[];
+    try{
+      gradeRows=await parseGradesWithAI(imgData.base64,imgData.mediaType);
+      prog.set(100,"Done!");
+      setTimeout(()=>prog.hide(),600);
+      renderGradeResults(gradeRows);
+    }catch(err){
+      if(err.message==="cancelled"){ prog.hide(); return; }
+      toast(err.message || "Grade analysis failed. Try a clearer image.");
+      prog.hide();
+    }
+  });
+
+  function renderGradeResults(rows){
+    resultsWrap.innerHTML=""; resultsWrap.classList.remove("hidden");
+    if(rows.length===0){
+      resultsWrap.appendChild(el("div",{class:"import-hint"},["No grades detected. Try a clearer image."]));
+      return;
+    }
+    resultsWrap.appendChild(el("p",{class:"import-hint"},[
+      "Found " + rows.length + " grade entr" + (rows.length===1?"y":"ies") + ". Uncheck any you don't want, then import."
+    ]));
+    const table=el("table",{class:"import-table"});
+    table.appendChild(el("thead",{},[el("tr",{},[
+      el("th",[]),el("th",{},["Subject"]),el("th",{},["Category"]),
+      el("th",{},["Score"]),el("th",{},["Max"]),el("th",{},["Weight %"])
+    ])]));
+    const tbody=el("tbody");
+    const checks=rows.map(r=>{
+      const cb=el("input",{type:"checkbox"}); cb.checked=true;
+      const catSel=select(["Quiz","Exam","Assignment","Activity","Project","Attendance","Final Grade","Other"],r.category);
+      catSel.addEventListener("change",()=>r.category=catSel.value);
+      const scoreI=input("number",r.score); scoreI.min=0; scoreI.addEventListener("input",()=>r.score=Number(scoreI.value)||0);
+      const maxI=input("number",r.max); maxI.min=0; maxI.addEventListener("input",()=>r.max=Number(maxI.value)||0);
+      const wtI=input("number",r.weight); wtI.min=0; wtI.addEventListener("input",()=>r.weight=Number(wtI.value)||0);
+      const tr=el("tr");
+      [cb, document.createTextNode(r.subject), catSel, scoreI, maxI, wtI].forEach(c=>tr.appendChild(el("td",{},[c])));
+      cb.addEventListener("change",()=>tr.classList.toggle("row-excluded",!cb.checked));
+      tbody.appendChild(tr);
+      return {r,cb};
+    });
+    table.appendChild(tbody);
+    resultsWrap.appendChild(el("div",{class:"import-table-wrap"},[table]));
+    resultsWrap.appendChild(el("div",{class:"modal-actions"},[
+      el("button",{class:"btn btn-ghost",onclick:closeModal},["Cancel"]),
+      el("div",{class:"modal-actions-right"},[
+        el("button",{class:"btn btn-primary",onclick:()=>{
+          const toImport=checks.filter(({cb})=>cb.checked).map(({r})=>r);
+          if(toImport.length===0){ toast("Nothing selected."); return; }
+          let added=0;
+          toImport.forEach(r=>{
+            let subj=state.subjects.find(s=>s.name.toLowerCase()===r.subject.toLowerCase());
+            if(!subj){
+              subj={id:uid(),name:r.subject,code:"",instructor:"",room:"",schedule:"",description:"",notes:"",priority:"Medium"};
+              state.subjects.push(subj);
+            }
+            const rec=ensureGradeRecord(subj.id);
+            rec.categories.push({id:uid(),name:r.category,score:r.score,max:r.max,weight:r.weight});
+            added++;
+          });
+          saveState(); renderAll(); closeModal();
+          toast("Imported " + added + " grade entr" + (added===1?"y":"ies") + ".");
+          switchView("grades");
+        }},["Import Grades"])
+      ])
+    ]));
+  }
+}
+
+/* ------- SUBJECT IMPORT ------- */
+function openImportSubjectModal(){
+  const { dropZoneEl, onFile } = buildDropZone("Photo of your enrollment form, COR, or class list");
+  const prog = buildProgressEl();
+  const resultsWrap = el("div", {class:"hidden"});
+
+  const body = el("div", {}, [makeApiKeyBtn(), dropZoneEl, prog.wrap, resultsWrap]);
+  openModal("Import Subjects from Image \u2014 AI", body);
+
+  onFile(async (file)=>{
+    if(!file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    dropZoneEl.innerHTML="";
+    let imgData;
+    try{ imgData=await readFileAsBase64(file); }catch(e){ toast("Could not read file."); return; }
+    dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
+    prog.show(); prog.set(20,"Claude is reading your enrollment form...");
+    let subjRows=[];
+    try{
+      subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType);
+      prog.set(100,"Done!");
+      setTimeout(()=>prog.hide(),600);
+      renderSubjectResults(subjRows);
+    }catch(err){
+      if(err.message==="cancelled"){ prog.hide(); return; }
+      toast(err.message || "Subject analysis failed. Try a clearer image.");
+      prog.hide();
+    }
+  });
+
+  function renderSubjectResults(rows){
+    resultsWrap.innerHTML=""; resultsWrap.classList.remove("hidden");
+    if(rows.length===0){
+      resultsWrap.appendChild(el("div",{class:"import-hint"},["No subjects detected. Try a clearer image."])); return;
+    }
+    resultsWrap.appendChild(el("p",{class:"import-hint"},[
+      "Found " + rows.length + " subject" + (rows.length===1?"":"s") + ". Edit if needed, then import."
+    ]));
+    const table=el("table",{class:"import-table"});
+    table.appendChild(el("thead",{},[el("tr",{},[
+      el("th",[]),el("th",{},["Subject Name"]),el("th",{},["Code"]),
+      el("th",{},["Instructor"]),el("th",{},["Room"]),el("th",{},["Schedule"])
+    ])]));
+    const tbody=el("tbody");
+    const checks=rows.map(r=>{
+      const cb=el("input",{type:"checkbox"}); cb.checked=true;
+      const nameI=input("text",r.name,"Subject name"); nameI.addEventListener("input",()=>r.name=nameI.value);
+      const codeI=input("text",r.code,"Code"); codeI.addEventListener("input",()=>r.code=codeI.value);
+      const instrI=input("text",r.instructor,"Instructor"); instrI.addEventListener("input",()=>r.instructor=instrI.value);
+      const roomI=input("text",r.room,"Room"); roomI.addEventListener("input",()=>r.room=roomI.value);
+      const schedI=input("text",r.schedule,"Schedule"); schedI.addEventListener("input",()=>r.schedule=schedI.value);
+      const tr=el("tr");
+      [cb,nameI,codeI,instrI,roomI,schedI].forEach(c=>tr.appendChild(el("td",{},[c])));
+      cb.addEventListener("change",()=>tr.classList.toggle("row-excluded",!cb.checked));
+      tbody.appendChild(tr);
+      return {r,cb};
+    });
+    table.appendChild(tbody);
+    resultsWrap.appendChild(el("div",{class:"import-table-wrap"},[table]));
+    resultsWrap.appendChild(el("div",{class:"modal-actions"},[
+      el("button",{class:"btn btn-ghost",onclick:closeModal},["Cancel"]),
+      el("div",{class:"modal-actions-right"},[
+        el("button",{class:"btn btn-primary",onclick:()=>{
+          const toImport=checks.filter(({cb})=>cb.checked).map(({r})=>r).filter(r=>r.name.trim());
+          if(toImport.length===0){ toast("Nothing selected."); return; }
+          let added=0,skipped=0;
+          toImport.forEach(r=>{
+            const existing=state.subjects.find(s=>s.name.toLowerCase()===r.name.toLowerCase());
+            if(existing){ skipped++; return; }
+            state.subjects.push({id:uid(),name:r.name.trim(),code:r.code.trim(),instructor:r.instructor.trim(),room:r.room.trim(),schedule:r.schedule.trim(),description:"",notes:"",priority:"Medium"});
+            added++;
+          });
+          saveState(); renderAll(); closeModal();
+          toast("Added " + added + " subject" + (added===1?"":"s") + (skipped>0?" ("+skipped+" already existed)":"") + ".");
+          switchView("subjects");
+        }},["Import Subjects"])
+      ])
+    ]));
+  }
+}
+
 
 /* =========================================================
    SEARCH
@@ -1590,6 +1878,9 @@ function wireEvents(){
     else if(action==="add-file") openFileModal();
     else if(action==="start-focus"){ switchView("focus"); }
     else if(action==="import-image") openImportImageModal();
+    else if(action==="import-grade") openImportGradeModal();
+    else if(action==="import-subject") openImportSubjectModal();
+    else if(action==="set-api-key") promptForApiKey().then(()=>toast("API key saved.")).catch(()=>{});
   });
 
   // task filters
