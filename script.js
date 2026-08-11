@@ -1183,26 +1183,132 @@ function resetData(){
    AI IMAGE ANALYSIS — Claude Vision API
    ========================================================= */
 
-const AI_KEY_STORAGE = "coursework.anthropic_key";
+const AI_KEY_STORAGE   = "coursework.ai_key";
+const AI_PROV_STORAGE  = "coursework.ai_provider";
 
+// vision:true  = can read images directly (sends base64)
+// vision:false = text-only; OCR is run first, then the extracted text is sent
+const AI_PROVIDERS = {
+  anthropic: {
+    label: "Anthropic (Claude)",
+    vision: true,
+    endpoint: "https://api.anthropic.com/v1/messages",
+    buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      return {
+        url: this.endpoint,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-opus-4-5",
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: [{ role:"user", content:[
+            { type:"image", source:{ type:"base64", media_type: mediaType, data: base64Data } },
+            { type:"text", text: userPrompt }
+          ]}]
+        })
+      };
+    },
+    extractText(data){ return (data.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim(); }
+  },
+  openai: {
+    label: "OpenAI (GPT-4o)",
+    vision: true,
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      return {
+        url: this.endpoint,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + key
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content:[
+              { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
+              { type:"text", text: userPrompt }
+            ]}
+          ]
+        })
+      };
+    },
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
+  },
+  gemini: {
+    label: "Google (Gemini 1.5 Flash)",
+    vision: true,
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+    buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      return {
+        url: this.endpoint + "?key=" + key,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts:[{ text: systemPrompt }] },
+          contents:[{ parts:[
+            { inline_data:{ mime_type: mediaType, data: base64Data } },
+            { text: userPrompt }
+          ]}]
+        })
+      };
+    },
+    extractText(data){ return (data.candidates?.[0]?.content?.parts?.[0]?.text||"").trim(); }
+  },
+  groq: {
+    label: "Groq (llama-4-scout) — fast, text-only",
+    vision: false,
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    buildTextRequest(key, systemPrompt, ocrText){
+      return {
+        url: this.endpoint,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + key
+        },
+        body: JSON.stringify({
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content: "Here is the raw text extracted from the image via OCR. Parse it and return the JSON as instructed.\n\n---\n" + ocrText }
+          ]
+        })
+      };
+    },
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
+  }
+};
+
+function getProvider(){ return localStorage.getItem(AI_PROV_STORAGE) || "anthropic"; }
+function saveProvider(p){ localStorage.setItem(AI_PROV_STORAGE, p); }
 function getApiKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ""; }
 function saveApiKey(key){ localStorage.setItem(AI_KEY_STORAGE, key.trim()); }
 
-/**
- * Opens a modal asking the user for their AI API key.
- * Accepts any key format (Anthropic, OpenAI, Gemini, etc.).
- */
 function promptForApiKey(){
   return new Promise((resolve, reject)=>{
-    const existing = getApiKey();
-    const keyInput = input("password", existing, "Paste your API key here...");
+    const existingKey = getApiKey();
+    const existingProv = getProvider();
+
+    const providerSelect = el("select", {style:"width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.9rem;"});
+    Object.entries(AI_PROVIDERS).forEach(([k,v])=>{
+      const opt = el("option", {value:k}, [v.label]);
+      if(k === existingProv) opt.selected = true;
+      providerSelect.appendChild(opt);
+    });
+
+    const keyInput = input("password", existingKey, "Paste your API key here...");
     keyInput.style.fontFamily = "monospace";
     keyInput.style.fontSize = "0.85rem";
 
     const body = el("div", {}, [
-      el("p", {class:"small"}, [
-        "Paste your AI API key below. It stays in your browser and is only used to analyze images."
-      ]),
+      el("p", {class:"small"}, ["Choose your AI provider and paste the corresponding API key. Stored only in your browser."]),
+      field("AI Provider", providerSelect),
       field("API Key", keyInput),
       el("div", {class:"modal-actions"}, [
         el("button", {class:"btn btn-ghost", onclick:()=>{ closeModal(); reject(new Error("cancelled")); }}, ["Cancel"]),
@@ -1210,6 +1316,7 @@ function promptForApiKey(){
           el("button", {class:"btn btn-primary", onclick:()=>{
             const k = keyInput.value.trim();
             if(!k){ toast("Please enter an API key."); return; }
+            saveProvider(providerSelect.value);
             saveApiKey(k);
             closeModal();
             resolve(k);
@@ -1227,43 +1334,69 @@ async function requireApiKey(){
   return promptForApiKey();
 }
 
-/**
- * Calls Claude Vision API with a base64 image and prompts.
- */
-async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userPrompt){
-  const key = await requireApiKey();
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: "claude-opus-4-5",
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
-          { type: "text", text: userPrompt }
-        ]
-      }]
-    })
+/* Lazy-load Tesseract only when needed for text-only providers */
+let _tesseractLoading = null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(_tesseractLoading) return _tesseractLoading;
+  _tesseractLoading = new Promise((resolve, reject)=>{
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = resolve;
+    s.onerror = ()=>reject(new Error("Could not load OCR engine. Check your connection."));
+    document.head.appendChild(s);
   });
+  return _tesseractLoading;
+}
 
+async function runOCR(base64Data, mediaType, onProgress){
+  await loadTesseract();
+  const dataUrl = "data:" + mediaType + ";base64," + base64Data;
+  const { data } = await window.Tesseract.recognize(dataUrl, "eng", {
+    logger: (m)=>{ if(m.status==="recognizing text" && onProgress) onProgress(Math.round(m.progress*100)); }
+  });
+  return data.text || "";
+}
+
+async function callProviderAPI(provider, key, systemPrompt, userPrompt, base64Data, mediaType){
+  const req = provider.buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType);
+  const response = await fetch(req.url, { method:"POST", headers:req.headers, body:req.body });
   if(!response.ok){
     const err = await response.json().catch(()=>({}));
     const msg = err?.error?.message || ("API error " + response.status);
-    if(response.status === 401) throw new Error("Invalid API key. Click the key icon to update it.");
+    if(response.status === 401 || response.status === 403){ saveApiKey(""); throw new Error("Invalid API key. Tap the key button to update it."); }
     throw new Error(msg);
   }
+  return provider.extractText(await response.json());
+}
 
-  const data = await response.json();
-  return data.content.map(b=> b.type==="text" ? b.text : "").join("").trim();
+async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userPrompt, progressCallback){
+  const key = await requireApiKey();
+  const provKey = getProvider();
+  const provider = AI_PROVIDERS[provKey] || AI_PROVIDERS.anthropic;
+
+  // Text-only providers: run OCR first, then send extracted text to the LLM
+  if(!provider.vision){
+    if(progressCallback) progressCallback(15, "Running OCR on image...");
+    const ocrText = await runOCR(base64Data, mediaType, (pct)=>{
+      if(progressCallback) progressCallback(15 + Math.round(pct * 0.5), "Reading image... " + pct + "%");
+    });
+    if(!ocrText.trim()) throw new Error("OCR returned no text. Try a clearer image.");
+    if(progressCallback) progressCallback(70, "Sending text to " + provider.label + "...");
+    const req = provider.buildTextRequest(key, systemPrompt, ocrText);
+    const response = await fetch(req.url, { method:"POST", headers:req.headers, body:req.body });
+    if(!response.ok){
+      const err = await response.json().catch(()=>({}));
+      const msg = err?.error?.message || ("API error " + response.status);
+      if(response.status === 401 || response.status === 403){ saveApiKey(""); throw new Error("Invalid API key. Tap the key button to update it."); }
+      throw new Error(msg);
+    }
+    return provider.extractText(await response.json());
+  }
+
+  // Vision-capable providers: send image directly
+  if(progressCallback) progressCallback(30, "Sending image to " + provider.label + "...");
+  return callProviderAPI(provider, key, systemPrompt, userPrompt, base64Data, mediaType);
 }
 
 function readFileAsBase64(file){
@@ -1306,11 +1439,12 @@ Important rules:
 - Return [] if no schedule data is found
 - Return ONLY the raw JSON array`;
 
-async function parseScheduleWithAI(base64Data, mediaType){
+async function parseScheduleWithAI(base64Data, mediaType, progressCallback){
   const rawJson = await analyzeImageWithClaude(
     base64Data, mediaType,
     SCHEDULE_SYSTEM_PROMPT,
-    "Extract all class schedule entries from this image. Return ONLY a JSON array."
+    "Extract all class schedule entries from this image. Return ONLY a JSON array.",
+    progressCallback
   );
 
   let parsed;
@@ -1381,11 +1515,12 @@ Rules:
 - Return [] if nothing found
 - Return ONLY the raw JSON array`;
 
-async function parseGradesWithAI(base64Data, mediaType){
+async function parseGradesWithAI(base64Data, mediaType, progressCallback){
   const rawJson = await analyzeImageWithClaude(
     base64Data, mediaType,
     GRADE_SYSTEM_PROMPT,
-    "Extract all grade entries from this image. Return ONLY a JSON array."
+    "Extract all grade entries from this image. Return ONLY a JSON array.",
+    progressCallback
   );
 
   let parsed;
@@ -1424,11 +1559,12 @@ Each entry:
 
 Return ONLY the raw JSON array.`;
 
-async function parseSubjectsWithAI(base64Data, mediaType){
+async function parseSubjectsWithAI(base64Data, mediaType, progressCallback){
   const rawJson = await analyzeImageWithClaude(
     base64Data, mediaType,
     SUBJECT_SYSTEM_PROMPT,
-    "Extract all subjects/courses from this enrollment form or class list. Return ONLY a JSON array."
+    "Extract all subjects/courses from this enrollment form or class list. Return ONLY a JSON array.",
+    progressCallback
   );
   let parsed;
   try{
@@ -1509,8 +1645,7 @@ function openImportImageModal(){
     dropZoneEl.appendChild(el("img", {class:"import-preview", src:imgData.dataUrl}));
     prog.show(); prog.set(10, "Sending to Claude AI...");
     try{
-      prog.set(30, "Claude is reading your schedule...");
-      extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType);
+      extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
       prog.set(100, "Done!");
       setTimeout(()=>prog.hide(), 600);
       renderScheduleResults();
@@ -1612,7 +1747,7 @@ function openImportGradeModal(){
     prog.show(); prog.set(20,"Claude is reading your grade sheet...");
     let gradeRows=[];
     try{
-      gradeRows=await parseGradesWithAI(imgData.base64,imgData.mediaType);
+      gradeRows=await parseGradesWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
       prog.set(100,"Done!");
       setTimeout(()=>prog.hide(),600);
       renderGradeResults(gradeRows);
@@ -1697,7 +1832,7 @@ function openImportSubjectModal(){
     prog.show(); prog.set(20,"Claude is reading your enrollment form...");
     let subjRows=[];
     try{
-      subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType);
+      subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
       prog.set(100,"Done!");
       setTimeout(()=>prog.hide(),600);
       renderSubjectResults(subjRows);
