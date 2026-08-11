@@ -385,10 +385,12 @@
           <div class="card span-2">
             <div class="card-head"><h3>Data Management</h3></div>
             <div class="card-body">
-              <p class="muted small">Everything is stored locally in your browser. Export a backup or restore from one.</p>
+              <p class="muted small">Everything is stored locally in your browser. Export a full backup (JSON) to transfer to another device, or print your info as PDF.</p>
               <div class="quick-actions">
-                <button class="btn btn-outline" id="btn-export">Export Data</button>
-                <button class="btn btn-outline" id="btn-import">Import Data</button>
+                <button class="btn btn-primary" id="btn-export">Export Backup (JSON)</button>
+                <button class="btn btn-outline" id="btn-import">Import Backup (JSON)</button>
+                <button class="btn btn-outline" id="btn-export-pdf">Export as PDF</button>
+                <button class="btn btn-outline" data-action="import-image">Import from Image / PDF</button>
                 <button class="btn btn-danger" id="btn-reset">Reset Data</button>
                 <input type="file" id="import-file" accept="application/json" class="hidden">
               </div>
