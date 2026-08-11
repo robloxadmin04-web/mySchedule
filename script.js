@@ -1271,40 +1271,77 @@ function parseScheduleText(rawText){
   const rows = [];
   const lines = rawText.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
 
-  // --- Mode 1: COR table format (Days column + Time and Date column) ---
-  // Look for lines that contain a day code AND a time range
-  const COR_DAY_RE = /(MWF|MTh|TTh|WSa|TThS|MWF|MW|MF|MT|TW|WF|ThF|MSa|TSa|FSa|WS|MS|Th|Sa|Su|M|T|W|F|S)/;
-  const TIME_RE    = /(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-–to]+\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)/i;
-  const ROOM_RE    = /([A-Z]{1,4}\d[\w.\-]*|GYM|ZOOM|ONLINE)/;
+  // Regex tools
+  const COR_DAY_RE = /\b(TThS|MWF|MTh|TTh|ThF|ThSa|WSa|MSa|TSa|FSa|MW|MF|MT|TW|WF|WS|MS|Th|Sa|Su|M|T|W|F|S)\b/;
+  const TIME_RE    = /(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-\u2013\u2014to]+\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)/i;
+  const ROOM_RE    = /\b([A-Z]{1,4}\d[\w.\-]*|GYM|ZOOM|ONLINE)\b/;
+  const COURSE_CODE_RE = /\b([A-Z]{2,8}-?\d{2,3}[A-Z]?)\b/;
+  const DAY_HEADER_RE = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)$/i;
 
-  // Collect subject names: lines with all caps course codes like OLENG01, OLMATH01
-  const COURSE_CODE_RE = /([A-Z]{2,8}-?\d{2,3}[A-Z]?)/;
+  function addRow(subject, day, time, room, type, instructor){
+    if(!subject || !day || !time) return;
+    rows.push({
+      id: uid(), include: true,
+      subject: subject.trim(),
+      day, start: time.start, end: time.end,
+      room: (room||"").trim(),
+      type: type || "Face to Face",
+      instructor: (instructor||"").trim()
+    });
+  }
 
+  function detectType(text){
+    const t = text.toUpperCase();
+    if(t.includes("ZOOM")) return "Zoom";
+    if(t.includes("GYM"))  return "Face to Face";
+    if(t.includes("ONLINE")) return "Online";
+    if(t.includes("FACE")) return "Face to Face";
+    return "Face to Face";
+  }
+
+  // ============================================================
+  // MODE 1: ICCT COR table format
+  // Course code line → subject name line → (row with days + time + room)
+  // Some rows have multiple times on 2 lines (LEC + LAB) — capture both
+  // ============================================================
   let currentSubject = "";
   let currentCode    = "";
+  let lastRowIdx     = -1;  // for detecting continuation LAB lines
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
 
-    // Detect course code lines (OLENG01, OLMATH01, OLFIL-01, etc.)
+    // Skip pure header lines
+    if(/^(Course|Section|Lec\s*Units|Lab\s*Units|Days|Time and Date|Room|Total|Downpayment|Installment|TERM|AMOUNT|DUE DATE)/i.test(line)) continue;
+    if(/^(Student|Full Name|Home Address|Academic|Contact|Program|Year Level|Sex|LRN)/i.test(line)) continue;
+
+    // Course code detection: OLENG01, OLMATH01, OLFIL-01, OLSOFAPP, etc.
     const codeMatch = line.match(COURSE_CODE_RE);
-    if(codeMatch && line.length < 60 && !/\d{1,2}:\d{2}/.test(line)){
+    if(codeMatch && line.length < 80 && !TIME_RE.test(line) && !/LFAU/i.test(line)){
       currentCode = codeMatch[1];
-      // Next non-empty, non-classroom line is usually subject name
-      const nextLine = lines[i+1] || "";
-      if(nextLine && !/Google Classroom|Gclass|LFAU|Section/i.test(nextLine) && nextLine.length > 3 && nextLine.length < 80){
-        currentSubject = nextLine.trim();
+      currentSubject = "";  // reset — next line likely has the full name
+      // Try same line: the code may be followed by "Google Classroom" then subject on next line
+      // Check if same line contains subject text after the code
+      const afterCode = line.replace(codeMatch[1],"").replace(/Google\s+Classroom/i,"").trim();
+      if(afterCode && afterCode.length > 3 && !/Gclass/i.test(afterCode)){
+        currentSubject = afterCode;
       }
       continue;
     }
 
-    // Detect subject name lines (after code): "Purposive Communication", "Mathematics in the Modern World"
-    if(!codeMatch && currentCode && !currentSubject && !/Google Classroom|Gclass|LFAU|Section/i.test(line) && /[A-Za-z]{4,}/.test(line) && line.length < 80){
+    // Subject name line (right after code, before Gclass Code)
+    if(currentCode && !currentSubject &&
+       !/Google\s+Classroom|Gclass\s+Code|LFAU|Section/i.test(line) &&
+       /[A-Za-z]{4,}/.test(line) && line.length < 100 &&
+       !COR_DAY_RE.test(line) && !TIME_RE.test(line)){
       currentSubject = line.trim();
       continue;
     }
 
-    // Lines with day code + time = schedule entry
+    // Skip Gclass Code lines
+    if(/Gclass\s*Code/i.test(line)) continue;
+
+    // Data row: day code + time
     const dayMatch  = line.match(COR_DAY_RE);
     const timeMatch = line.match(TIME_RE);
 
@@ -1315,98 +1352,98 @@ function parseScheduleText(rawText){
 
       const roomMatch = line.match(ROOM_RE);
       const room = roomMatch ? roomMatch[1] : "";
+      const type = detectType(line);
+      const name = currentSubject || currentCode || "Unknown Subject";
 
-      // Detect modality
-      let type = "Face to Face";
-      if(/ZOOM/i.test(line)) type = "Zoom";
-      else if(/ONLINE/i.test(line) || /GYM/i.test(line)) type = /GYM/i.test(line) ? "Face to Face" : "Online";
-
-      // Also check if LEC or LAB — skip LAB lines (already covered by LEC usually)
-      const isLab = /LAB/i.test(line);
-
-      const name = currentSubject || currentCode || "Unknown";
-
-      days.forEach(day=>{
-        // Don't double-add if same subject+day+start already added
-        const dup = rows.find(r=>r.subject===name && r.day===day && r.start===time.start);
-        if(!dup){
-          rows.push({
-            id:uid(), include:true,
-            subject: name,
-            day, start: time.start, end: time.end,
-            room, type, instructor:""
-          });
-        }
-      });
+      lastRowIdx = rows.length;
+      days.forEach(day=>addRow(name, day, time, room, type, ""));
       continue;
     }
 
-    // If line is a standalone day-code column (no time on same line), buffer it
-    // — some OCR splits columns across lines; handle below via lookahead
-    if(dayMatch && !timeMatch){
-      // look ahead for a time line
-      for(let j=i+1; j<Math.min(i+4, lines.length); j++){
-        const ahead = lines[j];
-        const aheadTime = ahead.match(TIME_RE);
-        if(aheadTime){
-          const days = expandDayCodes(dayMatch[1]);
-          const time = parseTimeRange(aheadTime[1]);
-          if(days && time){
-            const roomMatch = ahead.match(ROOM_RE) || line.match(ROOM_RE);
-            const room = roomMatch ? roomMatch[1] : "";
-            let type = "Face to Face";
-            if(/ZOOM/i.test(ahead+line)) type = "Zoom";
-            const name = currentSubject || currentCode || "Unknown";
-            days.forEach(day=>{
-              const dup = rows.find(r=>r.subject===name && r.day===day && r.start===time.start);
-              if(!dup) rows.push({id:uid(),include:true,subject:name,day,start:time.start,end:time.end,room,type,instructor:""});
-            });
-          }
-          break;
+    // Continuation LAB line (time only, no day code — inherits days from prev row)
+    if(timeMatch && !dayMatch && lastRowIdx >= 0){
+      const time = parseTimeRange(timeMatch[1]);
+      if(!time) continue;
+      const roomMatch = line.match(ROOM_RE);
+      const room = roomMatch ? roomMatch[1] : "";
+      const type = detectType(line);
+      // Get days from last batch of rows (same subject)
+      const prevRow = rows[lastRowIdx];
+      if(prevRow){
+        // Find all rows from lastRowIdx to end that share the same subject batch
+        const sameBatchDays = new Set();
+        for(let k = lastRowIdx; k < rows.length; k++){
+          if(rows[k].subject === prevRow.subject) sameBatchDays.add(rows[k].day);
         }
+        sameBatchDays.forEach(day=>addRow(prevRow.subject, day, time, room, type, ""));
       }
+      continue;
     }
   }
 
-  // --- Mode 2: Weekly grid format (MONDAY heading, then class entries) ---
-  // Only run if Mode 1 found nothing
-  if(rows.length === 0){
-    const DAY_HEADER_RE = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)$/i;
-    let curDay = null;
-    for(let i=0; i<lines.length; i++){
-      const line = lines[i];
-      if(DAY_HEADER_RE.test(line)){
-        curDay = line.charAt(0).toUpperCase() + line.slice(1).toLowerCase();
-        continue;
-      }
-      if(!curDay) continue;
-      if(/NO\s+CLASSES?/i.test(line)){ continue; }
-      const timeMatch = line.match(TIME_RE);
-      if(timeMatch){
-        const time = parseTimeRange(timeMatch[1]);
-        if(!time) continue;
-        const remainder = line.replace(timeMatch[1],"").trim();
-        const roomMatch = remainder.match(ROOM_RE);
-        const room = roomMatch ? roomMatch[1] : "";
-        let type = "Face to Face";
-        if(/ZOOM/i.test(remainder)) type = "Zoom";
-        else if(/ONLINE/i.test(remainder)) type = "Online";
-        // Subject is the non-room, non-time, non-type text
-        let subj = remainder.replace(ROOM_RE,"").replace(/ZOOM|FACE\s*TO\s*FACE|ONLINE|GYM|LEC|LAB/gi,"").replace(/\s+/g," ").trim();
-        // Look ahead for subject name if this line has no text
-        if(!subj && lines[i+1] && !/\d{1,2}:\d{2}/.test(lines[i+1])){
+  // ============================================================
+  // MODE 2: Weekly grid format — ALWAYS run this too (not just fallback)
+  // Handles: MONDAY / TUESDAY / WEDNESDAY sections with time ranges under each
+  // ============================================================
+  let curDay = null;
+  let pendingSubject = "";
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    const dayHeaderMatch = line.match(DAY_HEADER_RE);
+    if(dayHeaderMatch){
+      curDay = dayHeaderMatch[1].charAt(0).toUpperCase() + dayHeaderMatch[1].slice(1).toLowerCase();
+      pendingSubject = "";
+      continue;
+    }
+    if(!curDay) continue;
+    if(/^NO\s+CLASSES?$/i.test(line)){ continue; }
+
+    const timeMatch = line.match(TIME_RE);
+    if(timeMatch){
+      const time = parseTimeRange(timeMatch[1]);
+      if(!time) continue;
+
+      const roomMatch = line.match(ROOM_RE);
+      const room = roomMatch ? roomMatch[1] : "";
+      const type = detectType(line);
+
+      // Extract subject: strip time, room, type keywords
+      let subj = line
+        .replace(timeMatch[1],"")
+        .replace(ROOM_RE,"")
+        .replace(/ZOOM|FACE\s*TO\s*FACE|F2F|ONLINE|GYM|LEC|LAB/gi,"")
+        .replace(/[\|\u2022•]/g," ")
+        .replace(/\s+/g," ")
+        .trim();
+
+      // If line has no subject text, look at surrounding lines
+      if(!subj || subj.length < 3){
+        // Try previous line
+        if(pendingSubject) subj = pendingSubject;
+        else if(lines[i-1] && !TIME_RE.test(lines[i-1]) && !DAY_HEADER_RE.test(lines[i-1]) && lines[i-1].length > 3){
+          subj = lines[i-1].trim();
+        }
+        // Try next line
+        else if(lines[i+1] && !TIME_RE.test(lines[i+1]) && !DAY_HEADER_RE.test(lines[i+1]) && lines[i+1].length > 3){
           subj = lines[i+1].trim();
         }
-        if(!subj) subj = "Unknown";
-        rows.push({id:uid(),include:true,subject:subj,day:curDay,start:time.start,end:time.end,room,type,instructor:""});
       }
+      if(!subj) subj = "Unknown Subject";
+      pendingSubject = subj;
+
+      addRow(subj, curDay, time, room, type, "");
+    } else if(line.length > 3 && !/NO\s+CLASSES?/i.test(line) && !DAY_HEADER_RE.test(line)){
+      // Buffer possible subject name for next time entry
+      pendingSubject = line.trim();
     }
   }
 
-  // Deduplicate
+  // ============================================================
+  // Deduplicate — same day + start + subject prefix
+  // ============================================================
   const seen = new Set();
   return rows.filter(r=>{
-    const k = r.day+"|"+r.start+"|"+r.subject.toUpperCase().slice(0,10);
+    const k = r.day + "|" + r.start + "|" + r.end + "|" + r.subject.toUpperCase().replace(/\s+/g,"").slice(0,20);
     if(seen.has(k)) return false;
     seen.add(k); return true;
   });
@@ -1746,7 +1783,8 @@ function promptForApiKey(){
 async function requireApiKey(){
   const key = getApiKey();
   if(key) return key;
-  return promptForApiKey();
+  // Don't auto-prompt — throw so caller can fallback to local processing
+  throw new Error("NO_API_KEY");
 }
 
 /* =========================================================
@@ -2160,7 +2198,7 @@ function openImportImageModal(){
       setTimeout(()=>prog.hide(), 600);
       renderScheduleResults();
     }catch(err){
-      if(err.message === "cancelled"){ prog.hide(); return; }
+      if(err.message === "cancelled" || err.message === "NO_API_KEY"){ prog.hide(); return; }
       console.error(err);
       toast(err.message || "Analysis failed. Try a clearer image or PDF.");
       prog.hide();
@@ -2261,15 +2299,21 @@ function openImportGradeModal(){
     } else {
       dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
     }
-    prog.show(); prog.set(20,"Sending to AI...");
+    prog.show();
     let gradeRows=[];
     try{
+      if(!getApiKey()){
+        prog.hide();
+        toast("Grade analysis needs an AI API key. Tap the API Key button (free options available).");
+        return;
+      }
+      prog.set(20,"Sending to AI...");
       gradeRows=await parseGradesWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
       prog.set(100,"Done!");
       setTimeout(()=>prog.hide(),600);
       renderGradeResults(gradeRows);
     }catch(err){
-      if(err.message==="cancelled"){ prog.hide(); return; }
+      if(err.message==="cancelled" || err.message==="NO_API_KEY"){ prog.hide(); return; }
       toast(err.message || "Grade analysis failed. Try a clearer image.");
       prog.hide();
     }
@@ -2353,15 +2397,40 @@ function openImportSubjectModal(){
     } else {
       dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
     }
-    prog.show(); prog.set(20,"Sending to AI...");
+    prog.show();
     let subjRows=[];
     try{
-      subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
+      if(getApiKey()){
+        prog.set(20,"Sending to AI...");
+        subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
+      } else {
+        // No API key — extract locally then take unique subjects from schedule parser
+        let rawText = "";
+        if(imgData.isPdf){
+          prog.set(10,"Reading PDF...");
+          rawText = await extractTextFromPdf(imgData.base64, pct=>prog.set(10+Math.round(pct*0.7),"Reading PDF... "+pct+"%"));
+        } else {
+          prog.set(10,"Running OCR...");
+          await loadTesseract();
+          const dataUrl = "data:"+imgData.mediaType+";base64,"+imgData.base64;
+          const { data } = await window.Tesseract.recognize(dataUrl,"eng",{
+            logger: m=>{ if(m.status==="recognizing text") prog.set(10+Math.round(m.progress*65),"Reading... "+Math.round(m.progress*100)+"%"); }
+          });
+          rawText = data.text||"";
+        }
+        prog.set(85,"Extracting subjects...");
+        const schedRows = parseScheduleText(rawText);
+        const seen = new Set();
+        subjRows = schedRows
+          .filter(r=>{ const k = r.subject.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; })
+          .map(r=>({ name:r.subject, code:"", instructor:r.instructor||"", room:r.room||"", schedule:"" }));
+        if(subjRows.length===0) toast("Couldn't detect subjects. Try adding a free API key for better results.");
+      }
       prog.set(100,"Done!");
       setTimeout(()=>prog.hide(),600);
       renderSubjectResults(subjRows);
     }catch(err){
-      if(err.message==="cancelled"){ prog.hide(); return; }
+      if(err.message==="cancelled" || err.message==="NO_API_KEY"){ prog.hide(); return; }
       toast(err.message || "Subject analysis failed. Try a clearer image.");
       prog.hide();
     }
