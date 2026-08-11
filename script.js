@@ -1207,7 +1207,9 @@ const AI_PROVIDERS = {
           max_tokens: 2000,
           system: systemPrompt,
           messages: [{ role:"user", content:[
-            { type:"image", source:{ type:"base64", media_type: mediaType, data: base64Data } },
+            mediaType === "application/pdf"
+              ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64Data } }
+              : { type:"image", source:{ type:"base64", media_type: mediaType, data: base64Data } },
             { type:"text", text: userPrompt }
           ]}]
         })
@@ -1261,10 +1263,11 @@ const AI_PROVIDERS = {
     extractText(data){ return (data.candidates?.[0]?.content?.parts?.[0]?.text||"").trim(); }
   },
   groq: {
-    label: "Groq (llama-4-scout) — fast, text-only",
+    label: "Groq — fast, text-only",
     vision: false,
+    _models: ["llama-3.3-70b-versatile","llama3-70b-8192","mixtral-8x7b-32768","gemma2-9b-it"],
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    buildTextRequest(key, systemPrompt, ocrText){
+    buildTextRequest(key, systemPrompt, ocrText, model){
       return {
         url: this.endpoint,
         headers: {
@@ -1272,7 +1275,7 @@ const AI_PROVIDERS = {
           "Authorization": "Bearer " + key
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          model: model || "llama-3.3-70b-versatile",
           max_tokens: 2000,
           messages: [
             { role:"system", content: systemPrompt },
@@ -1383,7 +1386,20 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
     });
     if(!ocrText.trim()) throw new Error("OCR returned no text. Try a clearer image.");
     if(progressCallback) progressCallback(70, "Sending text to " + provider.label + "...");
-    const req = provider.buildTextRequest(key, systemPrompt, ocrText);
+    const models = provider._models || [null];
+    let lastErr2 = null;
+    for(const model of models){
+      const req2 = provider.buildTextRequest(key, systemPrompt, ocrText, model);
+      const r2 = await fetch(req2.url, { method:"POST", headers:req2.headers, body:req2.body });
+      if(r2.ok) return provider.extractText(await r2.json());
+      const e2 = await r2.json().catch(()=>({}));
+      const m2 = e2?.error?.message || ("API error " + r2.status);
+      if(r2.status === 401 || r2.status === 403){ saveApiKey(""); throw new Error("Invalid API key. Tap the key button to update it."); }
+      lastErr2 = new Error(m2);
+      if(r2.status === 404 || (m2 && m2.toLowerCase().includes("does not exist"))) continue;
+      throw lastErr2;
+    }
+    throw lastErr2 || new Error("All Groq models failed.");
     const response = await fetch(req.url, { method:"POST", headers:req.headers, body:req.body });
     if(!response.ok){
       const err = await response.json().catch(()=>({}));
@@ -1406,7 +1422,7 @@ function readFileAsBase64(file){
       const dataUrl = e.target.result;
       const [header, base64] = dataUrl.split(",");
       const mediaType = (header.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
-      resolve({ base64, mediaType, dataUrl });
+      resolve({ base64, mediaType, dataUrl, isPdf: mediaType === "application/pdf" });
     };
     reader.onerror = ()=>reject(new Error("Could not read file."));
     reader.readAsDataURL(file);
@@ -1587,7 +1603,7 @@ async function parseSubjectsWithAI(base64Data, mediaType, progressCallback){
 ========================================================= */
 
 function buildDropZone(labelText, subText){
-  const fileInput = el("input", {type:"file", accept:"image/*", style:"display:none"});
+  const fileInput = el("input", {type:"file", accept:"image/*,application/pdf", style:"display:none"});
   const dropZone = el("div", {class:"import-drop"}, [
     el("div", {class:"imp-icon"}, ["\u{1f4f7}"]),
     el("p", {}, [el("strong",{},["Click to upload"]), " or drag & drop"]),
@@ -1638,12 +1654,19 @@ function openImportImageModal(){
   openModal("Import Schedule from Image \u2014 AI", body);
 
   onFile(async (file)=>{
-    if(!file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    if(!file.type.startsWith("image/") && file.type !== "application/pdf"){ toast("Please choose an image or PDF file."); return; }
     dropZoneEl.innerHTML = "";
     let imgData;
     try{ imgData = await readFileAsBase64(file); }catch(e){ toast("Could not read file."); return; }
-    dropZoneEl.appendChild(el("img", {class:"import-preview", src:imgData.dataUrl}));
-    prog.show(); prog.set(10, "Sending to Claude AI...");
+    if(imgData.isPdf){
+      dropZoneEl.appendChild(el("div",{style:"padding:20px;text-align:center;"},[
+        el("p",{style:"font-size:3rem;margin:0;"},["PDF"]),
+        el("p",{class:"small muted"},[file.name])
+      ]));
+    } else {
+      dropZoneEl.appendChild(el("img", {class:"import-preview", src:imgData.dataUrl}));
+    }
+    prog.show(); prog.set(10, "Sending to AI...");
     try{
       extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
       prog.set(100, "Done!");
@@ -1739,12 +1762,19 @@ function openImportGradeModal(){
   openModal("Import Grades from Image \u2014 AI", body);
 
   onFile(async (file)=>{
-    if(!file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    if(!file.type.startsWith("image/") && file.type !== "application/pdf"){ toast("Please choose an image or PDF file."); return; }
     dropZoneEl.innerHTML="";
     let imgData;
     try{ imgData=await readFileAsBase64(file); }catch(e){ toast("Could not read file."); return; }
-    dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
-    prog.show(); prog.set(20,"Claude is reading your grade sheet...");
+    if(imgData.isPdf){
+      dropZoneEl.appendChild(el("div",{style:"padding:20px;text-align:center;"},[
+        el("p",{style:"font-size:3rem;margin:0;"},["PDF"]),
+        el("p",{class:"small muted"},[file.name])
+      ]));
+    } else {
+      dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
+    }
+    prog.show(); prog.set(20,"Sending to AI...");
     let gradeRows=[];
     try{
       gradeRows=await parseGradesWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
@@ -1824,12 +1854,19 @@ function openImportSubjectModal(){
   openModal("Import Subjects from Image \u2014 AI", body);
 
   onFile(async (file)=>{
-    if(!file.type.startsWith("image/")){ toast("Please choose an image file."); return; }
+    if(!file.type.startsWith("image/") && file.type !== "application/pdf"){ toast("Please choose an image or PDF file."); return; }
     dropZoneEl.innerHTML="";
     let imgData;
     try{ imgData=await readFileAsBase64(file); }catch(e){ toast("Could not read file."); return; }
-    dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
-    prog.show(); prog.set(20,"Claude is reading your enrollment form...");
+    if(imgData.isPdf){
+      dropZoneEl.appendChild(el("div",{style:"padding:20px;text-align:center;"},[
+        el("p",{style:"font-size:3rem;margin:0;"},["PDF"]),
+        el("p",{class:"small muted"},[file.name])
+      ]));
+    } else {
+      dropZoneEl.appendChild(el("img",{class:"import-preview",src:imgData.dataUrl}));
+    }
+    prog.show(); prog.set(20,"Sending to AI...");
     let subjRows=[];
     try{
       subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
