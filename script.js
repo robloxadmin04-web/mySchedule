@@ -1186,94 +1186,182 @@ function resetData(){
 const AI_KEY_STORAGE   = "coursework.ai_key";
 const AI_PROV_STORAGE  = "coursework.ai_provider";
 
-// vision:true  = can read images directly (sends base64)
-// vision:false = text-only; OCR is run first, then the extracted text is sent
+// vision:true  = sends image/PDF directly to the API
+// vision:false = text-only; runs Tesseract OCR first, sends extracted text
+// free:true    = has a free tier (no credit card required for basic use)
 const AI_PROVIDERS = {
-  anthropic: {
-    label: "Anthropic (Claude)",
-    vision: true,
-    endpoint: "https://api.anthropic.com/v1/messages",
+
+  /* ---- VISION PROVIDERS (can read images/PDF directly) ---- */
+
+  gemini: {
+    label: "Google Gemini 2.0 Flash [FREE]",
+    vision: true, free: true,
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      const part = mediaType === "application/pdf"
+        ? { inline_data:{ mime_type:"application/pdf", data: base64Data } }
+        : { inline_data:{ mime_type: mediaType, data: base64Data } };
       return {
-        url: this.endpoint,
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": key,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
+        url: this.endpoint + "?key=" + key,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-opus-4-5",
-          max_tokens: 2000,
-          system: systemPrompt,
-          messages: [{ role:"user", content:[
-            mediaType === "application/pdf"
-              ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64Data } }
-              : { type:"image", source:{ type:"base64", media_type: mediaType, data: base64Data } },
-            { type:"text", text: userPrompt }
-          ]}]
+          systemInstruction: { parts:[{ text: systemPrompt }] },
+          contents:[{ parts:[ part, { text: userPrompt } ]}]
         })
       };
     },
-    extractText(data){ return (data.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim(); }
+    extractText(data){ return (data.candidates?.[0]?.content?.parts?.[0]?.text||"").trim(); }
   },
-  openai: {
-    label: "OpenAI (GPT-4o)",
-    vision: true,
-    endpoint: "https://api.openai.com/v1/chat/completions",
+
+  groq_vision: {
+    label: "Groq LLaMA 4 Scout Vision [FREE]",
+    vision: true, free: true,
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      // Groq vision does not support PDF — fall back to text prompt for PDF
+      const userContent = mediaType === "application/pdf"
+        ? userPrompt + " (PDF provided as text — do your best)"
+        : [
+            { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
+            { type:"text", text: userPrompt }
+          ];
       return {
         url: this.endpoint,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + key
-        },
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "meta-llama/llama-4-scout-17b-16e-instruct",
           max_tokens: 2000,
           messages: [
             { role:"system", content: systemPrompt },
-            { role:"user", content:[
-              { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
-              { type:"text", text: userPrompt }
-            ]}
+            { role:"user", content: userContent }
           ]
         })
       };
     },
     extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
   },
-  gemini: {
-    label: "Google (Gemini 1.5 Flash)",
-    vision: true,
-    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+
+  mistral_vision: {
+    label: "Mistral Pixtral [FREE tier]",
+    vision: true, free: true,
+    endpoint: "https://api.mistral.ai/v1/chat/completions",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      const userContent = mediaType === "application/pdf"
+        ? userPrompt
+        : [
+            { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
+            { type:"text", text: userPrompt }
+          ];
       return {
-        url: this.endpoint + "?key=" + key,
-        headers: { "Content-Type": "application/json" },
+        url: this.endpoint,
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
         body: JSON.stringify({
-          systemInstruction: { parts:[{ text: systemPrompt }] },
-          contents:[{ parts:[
-            { inline_data:{ mime_type: mediaType, data: base64Data } },
-            { text: userPrompt }
-          ]}]
+          model: "pixtral-12b-2409",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content: userContent }
+          ]
         })
       };
     },
-    extractText(data){ return (data.candidates?.[0]?.content?.parts?.[0]?.text||"").trim(); }
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
   },
+
+  openrouter: {
+    label: "OpenRouter — free models [FREE]",
+    vision: true, free: true,
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      const userContent = mediaType === "application/pdf"
+        ? userPrompt
+        : [
+            { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
+            { type:"text", text: userPrompt }
+          ];
+      return {
+        url: this.endpoint,
+        headers: {
+          "Content-Type":"application/json",
+          "Authorization":"Bearer "+key,
+          "HTTP-Referer":"https://mySchedule.app",
+          "X-Title":"mySchedule"
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.0-flash-exp:free",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content: userContent }
+          ]
+        })
+      };
+    },
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
+  },
+
+  anthropic: {
+    label: "Anthropic Claude (paid)",
+    vision: true, free: false,
+    endpoint: "https://api.anthropic.com/v1/messages",
+    buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      const contentBlock = mediaType === "application/pdf"
+        ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64Data } }
+        : { type:"image", source:{ type:"base64", media_type: mediaType, data: base64Data } };
+      return {
+        url: this.endpoint,
+        headers: {
+          "Content-Type":"application/json",
+          "x-api-key": key,
+          "anthropic-version":"2023-06-01",
+          "anthropic-dangerous-direct-browser-access":"true"
+        },
+        body: JSON.stringify({
+          model: "claude-opus-4-5",
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: [{ role:"user", content:[ contentBlock, { type:"text", text: userPrompt } ]}]
+        })
+      };
+    },
+    extractText(data){ return (data.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim(); }
+  },
+
+  openai: {
+    label: "OpenAI GPT-4o (paid)",
+    vision: true, free: false,
+    endpoint: "https://api.openai.com/v1/chat/completions",
+    buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
+      const userContent = mediaType === "application/pdf"
+        ? userPrompt
+        : [
+            { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
+            { type:"text", text: userPrompt }
+          ];
+      return {
+        url: this.endpoint,
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          max_tokens: 2000,
+          messages: [{ role:"system", content: systemPrompt },{ role:"user", content: userContent }]
+        })
+      };
+    },
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
+  },
+
+  /* ---- TEXT-ONLY PROVIDERS (OCR first, then parse) ---- */
+
   groq: {
-    label: "Groq — fast, text-only",
-    vision: false,
-    _models: ["llama-3.3-70b-versatile","llama3-70b-8192","mixtral-8x7b-32768","gemma2-9b-it"],
+    label: "Groq LLaMA 3.3 text-only [FREE] + OCR",
+    vision: false, free: true,
+    _models: ["llama-3.3-70b-versatile","llama3-70b-8192","gemma2-9b-it","mixtral-8x7b-32768"],
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     buildTextRequest(key, systemPrompt, ocrText, model){
       return {
         url: this.endpoint,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + key
-        },
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
         body: JSON.stringify({
           model: model || "llama-3.3-70b-versatile",
           max_tokens: 2000,
@@ -1285,7 +1373,76 @@ const AI_PROVIDERS = {
       };
     },
     extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
+  },
+
+  mistral: {
+    label: "Mistral text-only [FREE] + OCR",
+    vision: false, free: true,
+    _models: ["open-mistral-nemo","open-mixtral-8x7b","mistral-small-latest"],
+    endpoint: "https://api.mistral.ai/v1/chat/completions",
+    buildTextRequest(key, systemPrompt, ocrText, model){
+      return {
+        url: this.endpoint,
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
+        body: JSON.stringify({
+          model: model || "open-mistral-nemo",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content: "Here is the raw text extracted from the image via OCR. Parse it and return the JSON as instructed.\n\n---\n" + ocrText }
+          ]
+        })
+      };
+    },
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
+  },
+
+  cohere: {
+    label: "Cohere Command R [FREE] + OCR",
+    vision: false, free: true,
+    endpoint: "https://api.cohere.com/v2/chat",
+    buildTextRequest(key, systemPrompt, ocrText){
+      return {
+        url: this.endpoint,
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
+        body: JSON.stringify({
+          model: "command-r-plus-08-2024",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content: "Here is the raw text extracted from the image via OCR. Parse it and return the JSON as instructed.\n\n---\n" + ocrText }
+          ]
+        })
+      };
+    },
+    extractText(data){
+      const msg = data.message;
+      if(!msg) return "";
+      return (msg.content||[]).map(b=>b.type==="text"?b.text:"").join("").trim() || (msg.text||"").trim();
+    }
+  },
+
+  huggingface: {
+    label: "HuggingFace (Qwen2.5) [FREE] + OCR",
+    vision: false, free: true,
+    endpoint: "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions",
+    buildTextRequest(key, systemPrompt, ocrText){
+      return {
+        url: this.endpoint,
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+key },
+        body: JSON.stringify({
+          model: "Qwen/Qwen2.5-72B-Instruct",
+          max_tokens: 2000,
+          messages: [
+            { role:"system", content: systemPrompt },
+            { role:"user", content: "Here is the raw text extracted from the image via OCR. Parse it and return the JSON as instructed.\n\n---\n" + ocrText }
+          ]
+        })
+      };
+    },
+    extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
   }
+
 };
 
 function getProvider(){ return localStorage.getItem(AI_PROV_STORAGE) || "anthropic"; }
@@ -1298,6 +1455,19 @@ function promptForApiKey(){
     const existingKey = getApiKey();
     const existingProv = getProvider();
 
+    const PROVIDER_LINKS = {
+      gemini: "https://aistudio.google.com/apikey",
+      groq_vision: "https://console.groq.com/keys",
+      groq: "https://console.groq.com/keys",
+      mistral_vision: "https://console.mistral.ai/",
+      mistral: "https://console.mistral.ai/",
+      openrouter: "https://openrouter.ai/keys",
+      cohere: "https://dashboard.cohere.com/api-keys",
+      huggingface: "https://huggingface.co/settings/tokens",
+      anthropic: "https://console.anthropic.com/",
+      openai: "https://platform.openai.com/api-keys"
+    };
+
     const providerSelect = el("select", {style:"width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.9rem;"});
     Object.entries(AI_PROVIDERS).forEach(([k,v])=>{
       const opt = el("option", {value:k}, [v.label]);
@@ -1305,13 +1475,23 @@ function promptForApiKey(){
       providerSelect.appendChild(opt);
     });
 
+    const keyLink = el("a", {href:"#", target:"_blank", class:"small", style:"display:block;margin-top:4px;"}, ["Get free API key"]);
+    function updateLink(){
+      const url = PROVIDER_LINKS[providerSelect.value] || "#";
+      keyLink.href = url;
+      keyLink.textContent = "Get free API key ↗ " + (providerSelect.options[providerSelect.selectedIndex]||{}).text;
+    }
+    providerSelect.addEventListener("change", updateLink);
+    updateLink();
+
     const keyInput = input("password", existingKey, "Paste your API key here...");
     keyInput.style.fontFamily = "monospace";
     keyInput.style.fontSize = "0.85rem";
 
     const body = el("div", {}, [
-      el("p", {class:"small"}, ["Choose your AI provider and paste the corresponding API key. Stored only in your browser."]),
+      el("p", {class:"small"}, ["Pick a provider (prefer ones marked [FREE]) then paste your key. Keys stay in your browser only."]),
       field("AI Provider", providerSelect),
+      keyLink,
       field("API Key", keyInput),
       el("div", {class:"modal-actions"}, [
         el("button", {class:"btn btn-ghost", onclick:()=>{ closeModal(); reject(new Error("cancelled")); }}, ["Cancel"]),
