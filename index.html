@@ -17,13 +17,13 @@
 
     <div class="setup-step" data-step="1">
       <label>Your name</label>
-      <input type="text" id="setup-name" placeholder="e.g. Alex Rivera" autocomplete="off">
+      <input type="text" id="setup-name" placeholder="e.g. Neil Steve" autocomplete="off">
       <label>School</label>
       <input type="text" id="setup-school" placeholder="e.g. State University" autocomplete="off">
       <label>Program</label>
-      <input type="text" id="setup-program" placeholder="e.g. BS Computer Science" autocomplete="off">
+      <input type="text" id="setup-program" placeholder="e.g. BSIT" autocomplete="off">
       <label>Year level</label>
-      <input type="text" id="setup-year" placeholder="e.g. 2nd Year" autocomplete="off">
+      <input type="text" id="setup-year" placeholder="e.g. 1st Year" autocomplete="off">
     </div>
 
     <div class="setup-actions">
@@ -146,6 +146,7 @@
                 <button class="btn btn-outline" data-action="add-subject">Add Subject</button>
                 <button class="btn btn-outline" data-action="add-note">Add Note</button>
                 <button class="btn btn-outline" data-action="start-focus">Start Focus</button>
+                <button class="btn btn-outline" data-action="import-image">Import Schedule from Image</button>
               </div>
             </div>
           </div>
@@ -157,7 +158,10 @@
       <section class="view" id="view-schedule">
         <div class="view-head">
           <div><h1>Schedule</h1><p class="muted">Your weekly class timetable.</p></div>
-          <button class="btn btn-primary" data-action="add-class">Add Class</button>
+          <div class="view-head-actions">
+            <button class="btn btn-outline" data-action="import-image">Import from Image</button>
+            <button class="btn btn-primary" data-action="add-class">Add Class</button>
+          </div>
         </div>
         <div class="week-grid" id="week-grid"></div>
       </section>
