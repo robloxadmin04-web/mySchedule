@@ -1749,6 +1749,52 @@ async function requireApiKey(){
   return promptForApiKey();
 }
 
+/* =========================================================
+   PDF TEXT EXTRACTION via PDF.js (no API needed)
+========================================================= */
+let _pdfjsLoading = null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  if(_pdfjsLoading) return _pdfjsLoading;
+  _pdfjsLoading = new Promise((resolve, reject)=>{
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+    s.onload = ()=>{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+      resolve();
+    };
+    s.onerror = ()=>reject(new Error("Could not load PDF reader."));
+    document.head.appendChild(s);
+  });
+  return _pdfjsLoading;
+}
+
+async function extractTextFromPdf(base64Data, onProgress){
+  await loadPdfJs();
+  const binary = atob(base64Data);
+  const bytes  = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  const pdf   = await window.pdfjsLib.getDocument({ data: bytes }).promise;
+  let fullText = "";
+  for(let p=1; p<=pdf.numPages; p++){
+    if(onProgress) onProgress(Math.round((p/pdf.numPages)*100));
+    const page  = await pdf.getPage(p);
+    const tc    = await page.getTextContent();
+    // Preserve line structure by grouping items by Y position
+    const byY = {};
+    tc.items.forEach(item=>{
+      const y = Math.round(item.transform[5]);
+      if(!byY[y]) byY[y]=[];
+      byY[y].push(item.str);
+    });
+    const sorted = Object.keys(byY).sort((a,b)=>Number(b)-Number(a));
+    sorted.forEach(y=>{ fullText += byY[y].join(" ") + "\n"; });
+    fullText += "\n";
+  }
+  return fullText;
+}
+
 /* Lazy-load Tesseract only when needed for text-only providers */
 let _tesseractLoading = null;
 function loadTesseract(){
@@ -1793,10 +1839,18 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
   // Text-only providers: run OCR first, then send extracted text to the LLM
   if(!provider.vision){
     if(progressCallback) progressCallback(15, "Running OCR on image...");
-    const ocrText = await runOCR(base64Data, mediaType, (pct)=>{
-      if(progressCallback) progressCallback(15 + Math.round(pct * 0.5), "Reading image... " + pct + "%");
-    });
-    if(!ocrText.trim()) throw new Error("OCR returned no text. Try a clearer image.");
+    let ocrText = "";
+    if(mediaType === "application/pdf"){
+      if(progressCallback) progressCallback(15, "Extracting PDF text...");
+      ocrText = await extractTextFromPdf(base64Data, pct=>{
+        if(progressCallback) progressCallback(15+Math.round(pct*0.5), "Reading PDF... "+pct+"%");
+      });
+    } else {
+      ocrText = await runOCR(base64Data, mediaType, (pct)=>{
+        if(progressCallback) progressCallback(15 + Math.round(pct * 0.5), "Reading image... " + pct + "%");
+      });
+    }
+    if(!ocrText.trim()) throw new Error("No text found. Try a clearer image or different file.");
     if(progressCallback) progressCallback(70, "Sending text to " + provider.label + "...");
     const models = provider._models || [null];
     let lastErr2 = null;
@@ -2084,15 +2138,22 @@ function openImportImageModal(){
         prog.set(10, "Sending to AI...");
         extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
       } else {
-        // No API key — local OCR + ICCT-aware parser
-        prog.set(10, "No API key — using local OCR...");
-        await loadTesseract();
-        const dataUrl = "data:" + imgData.mediaType + ";base64," + imgData.base64;
-        const { data } = await window.Tesseract.recognize(dataUrl, "eng", {
-          logger: m=>{ if(m.status==="recognizing text") prog.set(15 + Math.round(m.progress*65), "Reading... " + Math.round(m.progress*100) + "%"); }
-        });
+        // No API key — extract text locally then parse
+        let rawText = "";
+        if(imgData.isPdf){
+          prog.set(10, "Reading PDF...");
+          rawText = await extractTextFromPdf(imgData.base64, pct=>prog.set(10+Math.round(pct*0.7), "Reading PDF... "+pct+"%"));
+        } else {
+          prog.set(10, "Running OCR on image...");
+          await loadTesseract();
+          const dataUrl = "data:" + imgData.mediaType + ";base64," + imgData.base64;
+          const { data } = await window.Tesseract.recognize(dataUrl, "eng", {
+            logger: m=>{ if(m.status==="recognizing text") prog.set(10+Math.round(m.progress*70), "Reading... "+Math.round(m.progress*100)+"%"); }
+          });
+          rawText = data.text || "";
+        }
         prog.set(85, "Parsing schedule...");
-        extractedRows = parseScheduleText(data.text || "");
+        extractedRows = parseScheduleText(rawText);
         if(extractedRows.length === 0) toast("Couldn't detect classes. Try adding a free API key for better results.");
       }
       prog.set(100, "Done!");
