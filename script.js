@@ -1106,6 +1106,30 @@ function fillSettingsForm(){
   $("#s-focusdur").value = s.focusDur; $("#s-shortdur").value = s.shortDur; $("#s-longdur").value = s.longDur; $("#s-sessionsbeforelong").value = s.sessionsBeforeLong;
   $("#s-theme").value = s.theme; $("#s-density").value = s.density; $("#s-radius").value = s.radius; $("#s-reducemotion").checked = s.reduceMotion;
 
+  // Instant apply for appearance controls
+  ["s-theme","s-density","s-radius"].forEach(id=>{
+    const el = $("#"+id);
+    if(el && !el._instantWired){
+      el.addEventListener("change", ()=>{
+        state.settings.theme = $("#s-theme").value;
+        state.settings.density = $("#s-density").value;
+        state.settings.radius = $("#s-radius").value;
+        applyAppearance();
+        saveState();
+      });
+      el._instantWired = true;
+    }
+  });
+  const rm = $("#s-reducemotion");
+  if(rm && !rm._instantWired){
+    rm.addEventListener("change", ()=>{
+      state.settings.reduceMotion = rm.checked;
+      applyAppearance();
+      saveState();
+    });
+    rm._instantWired = true;
+  }
+
   const wt = $("#widget-toggles"); wt.innerHTML = "";
   Object.keys(WIDGET_LABELS).forEach(key=>{
     const cb = el("input", {type:"checkbox"});
@@ -1144,14 +1168,162 @@ function saveSettingsForm(){
   toast("Settings saved.");
 }
 
-function exportData(){
+// Load jsPDF from CDN on demand
+let _jspdfLoading = null;
+function loadJsPdf(){
+  if(window.jspdf) return Promise.resolve();
+  if(_jspdfLoading) return _jspdfLoading;
+  _jspdfLoading = new Promise((resolve, reject)=>{
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = ()=>{
+      const s2 = document.createElement("script");
+      s2.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+      s2.onload = ()=>resolve();
+      s2.onerror = ()=>reject(new Error("Could not load PDF library."));
+      document.head.appendChild(s2);
+    };
+    s.onerror = ()=>reject(new Error("Could not load PDF library."));
+    document.head.appendChild(s);
+  });
+  return _jspdfLoading;
+}
+
+async function exportData(){
+  toast("Generating PDF...");
+  try{
+    await loadJsPdf();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:"pt", format:"a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 40;
+    let y = margin;
+
+    // Title
+    doc.setFontSize(18); doc.setFont("helvetica","bold");
+    doc.text(state.profile.name || "My Coursework", margin, y); y += 22;
+    doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(120);
+    const subLine = [
+      state.profile.program, state.profile.year, state.profile.section, state.profile.school
+    ].filter(Boolean).join(" • ");
+    if(subLine){ doc.text(subLine, margin, y); y += 14; }
+    doc.setTextColor(150); doc.setFontSize(9);
+    doc.text("Exported " + new Date().toLocaleString(), margin, y); y += 20;
+    doc.setTextColor(0);
+
+    // SUBJECTS
+    if(state.subjects.length){
+      doc.setFontSize(13); doc.setFont("helvetica","bold");
+      doc.text("Subjects", margin, y); y += 6;
+      doc.autoTable({
+        startY: y + 4,
+        head: [["Subject","Code","Instructor","Room"]],
+        body: state.subjects.map(s=>[s.name||"", s.code||"", s.instructor||"", s.room||""]),
+        theme:"striped", styles:{fontSize:9, cellPadding:4},
+        headStyles:{fillColor:[45,45,55], textColor:255},
+        margin:{left:margin, right:margin}
+      });
+      y = doc.lastAutoTable.finalY + 18;
+    }
+
+    // SCHEDULE
+    if(state.classes.length){
+      if(y > 720){ doc.addPage(); y = margin; }
+      doc.setFontSize(13); doc.setFont("helvetica","bold");
+      doc.text("Weekly Schedule", margin, y); y += 6;
+      const dayOrder = {Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6,Sunday:7};
+      const sortedClasses = [...state.classes].sort((a,b)=>{
+        const da = (dayOrder[a.day]||8) - (dayOrder[b.day]||8);
+        if(da !== 0) return da;
+        return (a.start||"").localeCompare(b.start||"");
+      });
+      doc.autoTable({
+        startY: y + 4,
+        head: [["Day","Start","End","Subject","Room","Type"]],
+        body: sortedClasses.map(cls=>{
+          const subj = state.subjects.find(s=>s.id===cls.subject);
+          return [cls.day||"", cls.start||"", cls.end||"", subj ? subj.name : "?", cls.room||cls.location||"", cls.type||""];
+        }),
+        theme:"striped", styles:{fontSize:9, cellPadding:4},
+        headStyles:{fillColor:[45,45,55], textColor:255},
+        margin:{left:margin, right:margin}
+      });
+      y = doc.lastAutoTable.finalY + 18;
+    }
+
+    // ASSIGNMENTS / TASKS
+    if(state.tasks && state.tasks.length){
+      if(y > 720){ doc.addPage(); y = margin; }
+      doc.setFontSize(13); doc.setFont("helvetica","bold");
+      doc.text("Assignments", margin, y); y += 6;
+      doc.autoTable({
+        startY: y + 4,
+        head: [["Title","Subject","Due","Priority","Status"]],
+        body: state.tasks.map(t=>{
+          const subj = state.subjects.find(s=>s.id===t.subject);
+          return [t.title||"", subj?subj.name:"", t.due||"", t.priority||"", t.status||""];
+        }),
+        theme:"striped", styles:{fontSize:9, cellPadding:4},
+        headStyles:{fillColor:[45,45,55], textColor:255},
+        margin:{left:margin, right:margin}
+      });
+      y = doc.lastAutoTable.finalY + 18;
+    }
+
+    // GRADES
+    if(state.grades && Object.keys(state.grades).length){
+      if(y > 720){ doc.addPage(); y = margin; }
+      doc.setFontSize(13); doc.setFont("helvetica","bold");
+      doc.text("Grades", margin, y); y += 6;
+      const gradeRows = [];
+      Object.entries(state.grades).forEach(([subjId, rec])=>{
+        const subj = state.subjects.find(s=>s.id===subjId);
+        const name = subj ? subj.name : "?";
+        (rec.categories||[]).forEach(cat=>{
+          gradeRows.push([name, cat.name||"", cat.score||0, cat.max||100, (cat.weight||0)+"%"]);
+        });
+      });
+      if(gradeRows.length){
+        doc.autoTable({
+          startY: y + 4,
+          head: [["Subject","Category","Score","Max","Weight"]],
+          body: gradeRows,
+          theme:"striped", styles:{fontSize:9, cellPadding:4},
+          headStyles:{fillColor:[45,45,55], textColor:255},
+          margin:{left:margin, right:margin}
+        });
+        y = doc.lastAutoTable.finalY + 18;
+      }
+    }
+
+    // Footer with page numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let p=1; p<=pageCount; p++){
+      doc.setPage(p);
+      doc.setFontSize(8); doc.setTextColor(150);
+      doc.text("Page " + p + " of " + pageCount, pageW - margin, doc.internal.pageSize.getHeight() - 20, {align:"right"});
+      doc.text("mySchedule", margin, doc.internal.pageSize.getHeight() - 20);
+    }
+
+    // Save PDF
+    const fname = (state.profile.name || "my-coursework").toLowerCase().replace(/\s+/g,"-") + "-" + new Date().toISOString().slice(0,10) + ".pdf";
+    doc.save(fname);
+    toast("PDF exported.");
+  }catch(err){
+    console.error(err);
+    toast(err.message || "Could not export PDF.");
+  }
+}
+
+// Also keep JSON export for backup purposes
+function exportDataJson(){
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = "coursework-backup.json";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast("Data exported.");
+  toast("JSON backup exported.");
 }
 function importData(file){
   const reader = new FileReader();
@@ -2645,7 +2817,9 @@ function wireEvents(){
   // settings
   $("#btn-save-settings").addEventListener("click", saveSettingsForm);
   $("#btn-export").addEventListener("click", exportData);
-  $("#btn-import").addEventListener("click", ()=>$("#import-file").click());
+  // "Import" button now opens the AI/local image import modal (schedule import)
+  $("#btn-import").addEventListener("click", ()=>openImportImageModal());
+  // Keep hidden file input in case JSON restore is needed via drag-drop later
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
 }
