@@ -147,6 +147,9 @@
                 <button class="btn btn-outline" data-action="add-note">Add Note</button>
                 <button class="btn btn-outline" data-action="start-focus">Start Focus</button>
                 <button class="btn btn-outline" data-action="import-image">Import Schedule from Image</button>
+                <button class="btn btn-outline" data-action="import-grade">Import Grades from Image</button>
+                <button class="btn btn-outline" data-action="import-subject">Import Subjects from Image</button>
+                <button class="btn btn-outline" data-action="set-api-key">&#128273; Set AI API Key</button>
               </div>
             </div>
           </div>
@@ -197,7 +200,10 @@
       <section class="view" id="view-subjects">
         <div class="view-head">
           <div><h1>Subjects</h1><p class="muted">All your enrolled subjects in one place.</p></div>
-          <button class="btn btn-primary" data-action="add-subject">Add Subject</button>
+          <div class="view-head-actions">
+            <button class="btn btn-outline" data-action="import-subject">Import from Image</button>
+            <button class="btn btn-primary" data-action="add-subject">Add Subject</button>
+          </div>
         </div>
         <div class="grid-cards" id="subject-list"></div>
       </section>
@@ -206,7 +212,10 @@
       <section class="view" id="view-grades">
         <div class="view-head">
           <div><h1>Grades</h1><p class="muted">Track category weights and your running average.</p></div>
-          <select id="grades-subject-select"></select>
+          <div class="view-head-actions">
+            <button class="btn btn-outline" data-action="import-grade">Import from Image</button>
+            <select id="grades-subject-select"></select>
+          </div>
         </div>
         <div id="grades-panel"></div>
       </section>
