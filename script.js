@@ -15,6 +15,114 @@ const WIDGET_LABELS = {
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
+// ── Notification UI helpers ──────────────────────────────────────────────────
+function updateNotifPermStatus() {
+  const el = $("#notif-perm-status");
+  if (!el) return;
+  if (!("Notification" in window)) { el.textContent = "Browser notifications not supported."; return; }
+  const p = Notification.permission;
+  el.textContent = p === "granted" ? "✅ Permission granted — notifications are active."
+    : p === "denied" ? "❌ Permission blocked. Please allow in browser site settings."
+    : "⚠️ Permission not yet granted. Enable notifications above and save to request.";
+}
+
+// ── Philippine College Grade System ──────────────────────────────────────────
+// Standard 1.0–5.0 transmutation (CHED-aligned)
+const PH_GRADE_TABLE = [
+  { min: 97, max: 100, equiv: 1.0, desc: "Excellent" },
+  { min: 94, max: 96,  equiv: 1.25, desc: "Excellent" },
+  { min: 91, max: 93,  equiv: 1.5,  desc: "Very Good" },
+  { min: 88, max: 90,  equiv: 1.75, desc: "Very Good" },
+  { min: 85, max: 87,  equiv: 2.0,  desc: "Good" },
+  { min: 82, max: 84,  equiv: 2.25, desc: "Good" },
+  { min: 79, max: 81,  equiv: 2.5,  desc: "Satisfactory" },
+  { min: 76, max: 78,  equiv: 2.75, desc: "Satisfactory" },
+  { min: 75, max: 75,  equiv: 3.0,  desc: "Passing" },
+  { min:  0, max: 74,  equiv: 5.0,  desc: "Failed" },
+];
+
+function percentToPhGrade(pct) {
+  if (pct == null) return null;
+  for (const row of PH_GRADE_TABLE) {
+    if (pct >= row.min && pct <= row.max) return row;
+  }
+  return PH_GRADE_TABLE[PH_GRADE_TABLE.length - 1];
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+const _notifFired = new Set();
+
+function requestNotifPermission(cb) {
+  if (!("Notification" in window)) { toast("Browser notifications not supported."); return; }
+  if (Notification.permission === "granted") { cb && cb(true); return; }
+  Notification.requestPermission().then(p => {
+    cb && cb(p === "granted");
+    if (p === "granted") toast("Notifications enabled!");
+    else toast("Notification permission denied.");
+  });
+}
+
+function sendNotif(title, body, tag) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (_notifFired.has(tag)) return;
+  _notifFired.add(tag);
+  try { new Notification(title, { body, icon: "", tag }); } catch(e) {}
+  // Auto-clear tag after 2 minutes so same notif can fire next occurrence
+  setTimeout(() => _notifFired.delete(tag), 120000);
+}
+
+function checkNotifications() {
+  const s = state.settings;
+  if (!s.notificationsEnabled) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const now = new Date();
+  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1]; // Mon=0 index
+
+  // Class notifications
+  state.classes.forEach(cls => {
+    if (cls.day !== dayName) return;
+    const [h, m] = cls.start.split(":").map(Number);
+    const classTime = new Date(now); classTime.setHours(h, m, 0, 0);
+    const diffMin = (classTime - now) / 60000;
+    const mins = s.notifyClassMinutes || 10;
+    if (diffMin > 0 && diffMin <= mins) {
+      const subj = state.subjects.find(x => x.id === cls.subject);
+      const name = subj ? subj.name : (cls.subject || "Class");
+      const room = cls.location ? ` • ${cls.location}` : "";
+      sendNotif(
+        `Class in ${Math.ceil(diffMin)} min`,
+        `${name} at ${fmtTime(cls.start)}${room}`,
+        `class-${cls.id}-${now.toDateString()}`
+      );
+    }
+  });
+
+  // Deadline / assignment notifications
+  const deadlineMins = s.notifyDeadlineMinutes || 30;
+  state.tasks.forEach(task => {
+    if (!task.dueDate || task.status === "Completed") return;
+    const due = new Date(task.dueDate + (task.dueTime ? "T" + task.dueTime : "T23:59"));
+    const diffMin = (due - now) / 60000;
+    if (diffMin > 0 && diffMin <= deadlineMins) {
+      sendNotif(
+        `Deadline soon: ${task.title}`,
+        `Due in ${Math.ceil(diffMin)} min${task.subject ? " • " + task.subject : ""}`,
+        `task-${task.id}-deadline`
+      );
+    }
+    // Also notify 1 day before
+    if (diffMin > 0 && diffMin <= 24 * 60 && diffMin > deadlineMins) {
+      const hrs = Math.ceil(diffMin / 60);
+      sendNotif(
+        `Upcoming: ${task.title}`,
+        `Due in ~${hrs} hour${hrs !== 1 ? "s" : ""}`,
+        `task-${task.id}-day`
+      );
+    }
+  });
+}
+
 function defaultState(){
   return {
     setupDone:false,
@@ -31,7 +139,11 @@ function defaultState(){
       imageAutoBackup: true,
       imageBackupThreshold: 10,
       imageBackupLastCount: 0,
-      imageDeleteAfterBackup: false
+      imageDeleteAfterBackup: false,
+      notificationsEnabled: false,
+      notifyClassMinutes: 10,
+      notifyDeadlineMinutes: 30,
+      gradeSystem: "percentage"
     },
     classes:[],
     tasks:[],
@@ -656,11 +768,20 @@ function renderGradePanel(subjectId){
   const dec = state.settings.decimals;
   const passing = state.settings.passing;
 
+  const phRow = state.settings.gradeSystem === "ph" ? (()=>{
+    const phG = percentToPhGrade(grade);
+    const phTarget = percentToPhGrade(record.targetGrade!=null?record.targetGrade:state.settings.target);
+    return [
+      statCard("Grade Equiv.", phG ? phG.equiv.toFixed(2) + " (" + phG.desc + ")" : "—"),
+      statCard("Target Equiv.", phTarget ? phTarget.equiv.toFixed(2) : "—"),
+    ];
+  })() : [];
   const summary = el("div", {class:"grade-summary"}, [
     statCard("Current Grade", grade!=null ? grade.toFixed(dec)+"%" : "—"),
     statCard("Target Grade", (record.targetGrade!=null?record.targetGrade:state.settings.target)+"%"),
     statCard("Passing Grade", passing+"%"),
     statCard("Weight Used", weightTotal+"%"),
+    ...phRow,
   ]);
   panel.appendChild(summary);
 
@@ -727,12 +848,17 @@ function renderGradePanel(subjectId){
 function requiredScoreMessage(record, grade, weightTotal){
   const remainingWeight = 100 - weightTotal;
   const target = record.targetGrade!=null ? record.targetGrade : state.settings.target;
-  if(remainingWeight <= 0) return grade!=null ? `All weight allocated. Current grade: ${grade.toFixed(state.settings.decimals)}%.` : "All weight allocated.";
+  const isPh = state.settings.gradeSystem === "ph";
+  const phSuffix = isPh && grade != null ? (() => {
+    const g = percentToPhGrade(grade);
+    return g ? ` (Grade equiv: ${g.equiv.toFixed(2)} — ${g.desc})` : "";
+  })() : "";
+  if(remainingWeight <= 0) return grade!=null ? `All weight allocated. Current grade: ${grade.toFixed(state.settings.decimals)}%${phSuffix}.` : "All weight allocated.";
   const currentWeighted = grade!=null ? (grade * weightTotal / 100) : 0;
   const neededAvgOnRemaining = ((target - currentWeighted) / remainingWeight) * 100;
   if(neededAvgOnRemaining > 100) return `Reaching ${target}% is very difficult with ${remainingWeight}% weight remaining — you would need more than 100% on what's left.`;
-  if(neededAvgOnRemaining < 0) return `You have already secured your ${target}% target based on categories entered so far.`;
-  return `To reach ${target}% overall, average about ${neededAvgOnRemaining.toFixed(state.settings.decimals)}% on the remaining ${remainingWeight}% of weight.`;
+  if(neededAvgOnRemaining < 0) return `You have already secured your ${target}% target based on categories entered so far.${phSuffix}`;
+  return `To reach ${target}% overall, average about ${neededAvgOnRemaining.toFixed(state.settings.decimals)}% on the remaining ${remainingWeight}% of weight.${phSuffix}`;
 }
 
 function refreshGradeSummaryOnly(subjectId){ renderGradePanel(subjectId); }
@@ -1144,6 +1270,13 @@ function fillSettingsForm(){
   const ibt = $("#s-imagebackupthreshold"); if(ibt) ibt.value = s.imageBackupThreshold || 10;
   const idab = $("#s-imagedeleteafterbackup"); if(idab) idab.checked = !!s.imageDeleteAfterBackup;
 
+  // Notifications
+  const sne = $("#s-notifenabled"); if(sne) sne.checked = !!s.notificationsEnabled;
+  const snc = $("#s-notifclass"); if(snc) snc.value = s.notifyClassMinutes || 10;
+  const snd = $("#s-notifdeadline"); if(snd) snd.value = s.notifyDeadlineMinutes || 30;
+  const sgs = $("#s-gradesystem"); if(sgs) sgs.value = s.gradeSystem || "percentage";
+  updateNotifPermStatus();
+
   
   ["s-theme","s-density","s-radius"].forEach(id=>{
     const el = $("#"+id);
@@ -1199,6 +1332,13 @@ function saveSettingsForm(){
   const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) s.imageBackupThreshold = Math.max(1, Number(ibt.value)||10);
   const idab = $("#s-imagedeleteafterbackup"); if(idab) s.imageDeleteAfterBackup = idab.checked;
+
+  // Notifications
+  const sne2 = $("#s-notifenabled"); if(sne2) s.notificationsEnabled = sne2.checked;
+  const snc2 = $("#s-notifclass"); if(snc2) s.notifyClassMinutes = Math.max(1, Number(snc2.value)||10);
+  const snd2 = $("#s-notifdeadline"); if(snd2) s.notifyDeadlineMinutes = Math.max(1, Number(snd2.value)||30);
+  const sgs2 = $("#s-gradesystem"); if(sgs2) s.gradeSystem = sgs2.value;
+  if(s.notificationsEnabled) requestNotifPermission(ok => { if(!ok) s.notificationsEnabled = false; saveState(); });
 
   $all("#widget-toggles input[type=checkbox]").forEach(cb=>{
     s.widgets[cb.dataset.widgetKey] = cb.checked;
@@ -3417,6 +3557,17 @@ function wireEvents(){
   
   tickClock();
   setInterval(tickClock, 1000);
+  setInterval(checkNotifications, 60000); // check every minute
+
+  // Test notification button
+  document.addEventListener("click", e => {
+    if (e.target.id === "btn-test-notif") {
+      requestNotifPermission(ok => {
+        updateNotifPermStatus();
+        if (ok) sendNotif("mySchedule Test", "Notifications are working! ✅", "test-" + Date.now());
+      });
+    }
+  });
 
   
   $("#modal-close").addEventListener("click", closeModal);
