@@ -44,6 +44,7 @@ function defaultState(){
     grades:{},
     notes:[],
     files:[],
+    images:[],
     focusStats:{ sessionsCompleted:0, totalFocusMinutes:0, history:[] }
   };
 }
@@ -187,6 +188,7 @@ function switchView(view){
   $all(".view").forEach(v=>v.classList.toggle("active", v.id === "view-"+view));
   closeSidebarMobile();
   if(view === "grades") renderGrades();
+  if(view === "images") renderImages();
   window.scrollTo({top:0, behavior: state.settings.reduceMotion ? "auto":"smooth"});
 }
 
@@ -2743,6 +2745,7 @@ function runSearch(term){
     { label:"Assignments", items: state.tasks.filter(t=>t.title.toLowerCase().includes(q)).map(t=>({label:t.title, action:()=>{switchToNav("assignments"); openTaskModal(t);} })) },
     { label:"Notes", items: state.notes.filter(n=>n.title.toLowerCase().includes(q)||n.content.toLowerCase().includes(q)).map(n=>({label:n.title, action:()=>{switchToNav("notes"); openNoteModal(n);} })) },
     { label:"Files", items: state.files.filter(f=>f.name.toLowerCase().includes(q)).map(f=>({label:f.name, action:()=>{switchToNav("files"); openFileModal(f);} })) },
+    { label:"Images", items: (state.images||[]).filter(i=>(i.title||"").toLowerCase().includes(q)||(i.note||"").toLowerCase().includes(q)).map(i=>({label:i.title||"Untitled", action:()=>{switchToNav("images"); openImageModal(i);} })) },
   ];
   const anyResults = groups.some(g=>g.items.length>0);
   if(!anyResults){
@@ -2791,6 +2794,208 @@ function finishSetup(skip){
 /* =========================================================
    RENDER ALL
 ========================================================= */
+
+/* =========================================================
+   IMAGES MODULE — upload, view, delete
+========================================================= */
+
+let _imageSearchQuery = "";
+
+// Resize/compress large images to keep localStorage size manageable
+async function compressImageFile(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        // Determine target dimensions
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        const outType = file.type === "image/png" ? "image/png" : "image/jpeg";
+        const dataUrl = canvas.toDataURL(outType, quality);
+        resolve({ dataUrl, width:w, height:h, size: dataUrl.length });
+      };
+      img.onerror = ()=>reject(new Error("Failed to load image"));
+      img.src = reader.result;
+    };
+    reader.onerror = ()=>reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleImageUpload(files){
+  if(!files || !files.length) return;
+  let added = 0;
+  const total = files.length;
+  toast("Uploading " + total + " image" + (total===1?"":"s") + "...");
+  for(const file of files){
+    if(!file.type.startsWith("image/")){ continue; }
+    try{
+      // Compress to max 1600px on longest side, quality 0.85
+      const { dataUrl, width, height } = await compressImageFile(file, 1600, 0.85);
+      const now = new Date().toISOString();
+      state.images.push({
+        id: uid(),
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        subject: "",
+        note: "",
+        dataUrl,
+        width, height,
+        size: dataUrl.length,
+        createdAt: now,
+        updatedAt: now
+      });
+      added++;
+    }catch(err){
+      console.error("Image upload failed:", err);
+    }
+  }
+  if(added){
+    try{
+      saveState();
+      renderImages();
+      toast("Added " + added + " image" + (added===1?"":"s") + ".");
+    }catch(err){
+      // Likely localStorage quota exceeded
+      state.images = state.images.slice(0, state.images.length - added);
+      toast("Storage full! Delete some images or reduce quality.");
+    }
+  } else {
+    toast("No valid images uploaded.");
+  }
+}
+
+function deleteImage(id){
+  confirmModal("Delete this image?", ()=>{
+    state.images = state.images.filter(i=>i.id!==id);
+    saveState(); renderImages();
+    toast("Image deleted.");
+  });
+}
+
+function openImageModal(img){
+  const isNew = !img;
+  const data = img || { id:uid(), title:"", subject:"", note:"", dataUrl:"", createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+
+  const titleInput = input("text", data.title, "Image title");
+  const subjectSelect = el("select", {});
+  subjectSelect.appendChild(el("option",{value:""},["(No subject)"]));
+  state.subjects.forEach(s=>{
+    const opt = el("option",{value:s.id},[s.name]);
+    if(s.id === data.subject) opt.selected = true;
+    subjectSelect.appendChild(opt);
+  });
+  const noteInput = el("textarea", {rows:3, placeholder:"Notes about this image..."});
+  noteInput.value = data.note || "";
+
+  const preview = data.dataUrl
+    ? el("img", {src:data.dataUrl, style:"max-width:100%;max-height:300px;border-radius:8px;margin-bottom:12px;object-fit:contain;"})
+    : el("div", {class:"muted small"}, ["(no image)"]);
+
+  const meta = el("p", {class:"small muted"}, [
+    "Size: " + (data.width && data.height ? (data.width + "×" + data.height + "  •  ") : "") +
+    Math.round((data.size||0)/1024) + " KB  •  " +
+    new Date(data.createdAt).toLocaleString()
+  ]);
+
+  const body = el("div", {}, [
+    preview,
+    meta,
+    field("Title", titleInput),
+    field("Subject", subjectSelect),
+    field("Notes", noteInput),
+    el("div", {class:"modal-actions"}, [
+      isNew ? null : el("button", {class:"btn btn-danger", onclick:()=>{ closeModal(); deleteImage(data.id); }}, ["Delete"]),
+      el("div", {class:"modal-actions-right"}, [
+        el("button", {class:"btn btn-ghost", onclick:closeModal}, ["Cancel"]),
+        el("button", {class:"btn btn-primary", onclick:()=>{
+          data.title   = titleInput.value.trim() || "Untitled";
+          data.subject = subjectSelect.value;
+          data.note    = noteInput.value.trim();
+          data.updatedAt = new Date().toISOString();
+          if(isNew){ toast("Use the Upload button on the Images tab to add new images."); return; }
+          const idx = state.images.findIndex(x=>x.id===data.id);
+          if(idx>=0) state.images[idx] = data;
+          saveState(); renderImages(); closeModal();
+          toast("Image updated.");
+        }}, ["Save"])
+      ])
+    ])
+  ]);
+
+  openModal(isNew ? "Image" : "Edit Image", body);
+}
+
+function openImageLightbox(dataUrl){
+  const lightbox = el("div", {class:"image-lightbox"}, [
+    el("button", {class:"image-lightbox-close", onclick:(e)=>{ e.stopPropagation(); lightbox.remove(); }}, ["×"]),
+    el("img", {src:dataUrl, onclick:(e)=>e.stopPropagation()})
+  ]);
+  lightbox.addEventListener("click", ()=>lightbox.remove());
+  document.body.appendChild(lightbox);
+}
+
+function renderImages(){
+  const container = $("#image-list");
+  if(!container) return;
+  container.innerHTML = "";
+
+  const q = _imageSearchQuery.trim().toLowerCase();
+  let items = state.images.slice().sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+  if(q){
+    items = items.filter(i=>{
+      const subjName = subjectName(i.subject).toLowerCase();
+      return (i.title||"").toLowerCase().includes(q) ||
+             (i.note||"").toLowerCase().includes(q) ||
+             subjName.includes(q);
+    });
+  }
+
+  if(items.length === 0){
+    container.appendChild(emptyState(
+      q ? "No matching images" : "No images yet",
+      q ? "Try a different search term." : "Upload your first image using the button above."
+    ));
+    return;
+  }
+
+  items.forEach(img=>{
+    const subj = subjectName(img.subject);
+    const card = el("div", {class:"image-card"}, [
+      el("img", {
+        class:"image-card-thumb",
+        src: img.dataUrl,
+        loading:"lazy",
+        onclick: ()=>openImageLightbox(img.dataUrl)
+      }),
+      el("div", {class:"image-card-body"}, [
+        el("div", {class:"image-card-title"}, [img.title || "Untitled"]),
+        el("div", {class:"image-card-meta"}, [ subj || "·", " • ", Math.round((img.size||0)/1024) + " KB" ])
+      ]),
+      el("div", {class:"image-card-actions"}, [
+        el("button", {class:"icon-btn", title:"Download", onclick:(e)=>{
+          e.stopPropagation();
+          const a = document.createElement("a");
+          a.href = img.dataUrl;
+          a.download = (img.title || "image") + (img.dataUrl.startsWith("data:image/png") ? ".png" : ".jpg");
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }}, [el("span",{class:"nav-ico",style:"font-size:14px;"},["⬇"])]),
+        el("button", {class:"icon-btn", title:"Edit", onclick:(e)=>{ e.stopPropagation(); openImageModal(img); }},
+          [el("span",{class:"nav-ico","data-ico":"note"})]),
+        el("button", {class:"icon-btn", title:"Delete", onclick:(e)=>{ e.stopPropagation(); deleteImage(img.id); }},
+          [el("span",{class:"nav-ico","data-ico":"close"})])
+      ])
+    ]);
+    container.appendChild(card);
+  });
+}
+
 function renderAll(){
   $("#mini-name").textContent = state.profile.name || "Student";
   $("#mini-sub").textContent = state.profile.program || "My Program";
@@ -2802,6 +3007,7 @@ function renderAll(){
   renderSubjects();
   renderNotes();
   renderFiles();
+  renderImages();
   renderFocus();
   if($("#view-grades").classList.contains("active")) renderGrades();
 }
@@ -2891,6 +3097,18 @@ function wireEvents(){
   $("#btn-import").addEventListener("click", ()=>$("#import-file").click());
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
+
+  // Images
+  const btnAddImg = $("#btn-add-image");
+  const imgInput  = $("#image-upload-input");
+  if(btnAddImg && imgInput){
+    btnAddImg.addEventListener("click", ()=>imgInput.click());
+    imgInput.addEventListener("change", (e)=>{ handleImageUpload(e.target.files); e.target.value=""; });
+  }
+  const imgSearch = $("#image-search");
+  if(imgSearch){
+    imgSearch.addEventListener("input", (e)=>{ _imageSearchQuery = e.target.value; renderImages(); });
+  }
 }
 
 /* =========================================================
