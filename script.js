@@ -1,8 +1,5 @@
-
-
 (function(){
 "use strict";
-
 
 const STORAGE_KEY = "coursework.state.v1";
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -30,6 +27,7 @@ function defaultState(){
       theme:"light", density:"comfortable", radius:"soft", reduceMotion:false,
       classTypes: CLASS_TYPES_DEFAULT.slice(),
       widgets:{ nextclass:true, progress:true, todayschedule:true, todaytasks:true, deadlines:true, focusstats:true, quickactions:true },
+      
       imageAutoBackup: true,
       imageBackupThreshold: 10,
       imageBackupLastCount: 0,
@@ -53,6 +51,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
     const parsed = JSON.parse(raw);
+    
     const def = defaultState();
     return deepMerge(def, parsed);
   }catch(e){
@@ -85,7 +84,7 @@ function saveState(){
     toast("Could not save — storage may be full.");
   }
 }
- 
+
 function $(sel, root){ return (root||document).querySelector(sel); }
 function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
 function el(tag, attrs, children){
@@ -137,7 +136,10 @@ function toast(msg){
   clearTimeout(toast._timer);
   toast._timer = setTimeout(()=>t.classList.remove("show"), 2200);
 }
- 
+
+/* ---------------------------------------------------------
+   THEME / APPEARANCE
+--------------------------------------------------------- */
 function applyAppearance(){
   const s = state.settings;
   let theme = s.theme;
@@ -156,7 +158,10 @@ function toggleTheme(){
   applyAppearance();
   saveState();
 }
- 
+
+/* ---------------------------------------------------------
+   CLOCK
+--------------------------------------------------------- */
 function tickClock(){
   const d = new Date();
   const timeStr = state.settings.timeFormat === "12"
@@ -166,7 +171,10 @@ function tickClock(){
   const timeEl = $("#clock-time"); if(timeEl) timeEl.textContent = timeStr;
   const dateEl = $("#clock-date"); if(dateEl) dateEl.textContent = dateStr;
 }
- 
+
+/* ---------------------------------------------------------
+   NAVIGATION
+--------------------------------------------------------- */
 function switchView(view){
   $all(".nav-item").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
   $all(".view").forEach(v=>v.classList.toggle("active", v.id === "view-"+view));
@@ -178,7 +186,10 @@ function switchView(view){
 
 function openSidebarMobile(){ $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); }
 function closeSidebarMobile(){ $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); }
- 
+
+/* ---------------------------------------------------------
+   MODAL
+--------------------------------------------------------- */
 function openModal(title, bodyNode, opts){
   $("#modal-title").textContent = title;
   const body = $("#modal-body");
@@ -192,11 +203,13 @@ function openModal(title, bodyNode, opts){
 function closeModal(){
   $("#modal-overlay").classList.add("hidden");
   $("#modal-body").innerHTML = "";
-   const box = $("#modal-box");
+  // Reset any drag transform
+  const box = $("#modal-box");
   if(box){ box.style.transform = ""; box.dataset.dx = "0"; box.dataset.dy = "0"; }
 }
 
- let _modalDragWired = false;
+// Make modal draggable by its header
+let _modalDragWired = false;
 function enableModalDrag(){
   if(_modalDragWired) return;
   _modalDragWired = true;
@@ -217,7 +230,8 @@ function enableModalDrag(){
   }
 
   function onDown(e){
-     if(e.target.closest("button,input,select,textarea,a")) return;
+    // Ignore drags started on interactive elements inside the header (like the close button)
+    if(e.target.closest("button,input,select,textarea,a")) return;
     dragging = true;
     const p = getPoint(e);
     startX = p.x; startY = p.y;
@@ -257,7 +271,11 @@ function confirmModal(message, onConfirm){
     ])
   ]);
   openModal("Confirm", wrap);
-} 
+}
+
+/* ---------------------------------------------------------
+   FORM FIELD BUILDERS
+--------------------------------------------------------- */
 function field(labelText, inputNode){
   return el("div", {class:"form-row"}, [ el("label",{},[labelText]), inputNode ]);
 }
@@ -284,7 +302,10 @@ function select(options, value){
 function subjectSelectOptions(){
   return [{value:"", label:"— No subject —"}, ...state.subjects.map(s=>({value:s.id, label:s.name}))];
 }
- 
+
+/* =========================================================
+   CLASSES / SCHEDULE
+========================================================= */
 function openClassModal(existing){
   const c = existing || { id:uid(), subject:"", day: todayName(), start:"08:00", end:"09:00", location:"", type: state.settings.defaultClassType, instructor:"", room:"", notes:"" };
 
@@ -376,7 +397,10 @@ function renderSchedule(){
     grid.appendChild(col);
   });
 }
- 
+
+/* =========================================================
+   TASKS / ASSIGNMENTS
+========================================================= */
 let taskFilter = "all";
 let taskSearchTerm = "";
 
@@ -506,7 +530,10 @@ function emptyState(title, sub){
     sub ? el("p", {class:"small"}, [sub]) : null
   ]);
 }
- 
+
+/* =========================================================
+   SUBJECTS
+========================================================= */
 function openSubjectModal(existing){
   const s = existing || { id:uid(), name:"", code:"", instructor:"", room:"", schedule:"", description:"", notes:"", priority:"Medium" };
   const fName = input("text", s.name, "Subject name");
@@ -583,7 +610,7 @@ function renderSubjects(){
     wrap.appendChild(card);
   });
 }
- 
+
 function ensureGradeRecord(subjectId){
   if(!state.grades[subjectId]){
     state.grades[subjectId] = { categories:[], targetGrade: state.settings.target };
@@ -682,7 +709,8 @@ function renderGradePanel(subjectId){
   addRow.appendChild(catNameSelect); addRow.appendChild(scoreI); addRow.appendChild(maxI); addRow.appendChild(weightI); addRow.appendChild(addBtn);
   panel.appendChild(el("div",{class:"card"},[ el("div",{class:"card-head"},[el("h3",{},["Add Grading Category"])]), el("div",{class:"card-body"},[addRow]) ]));
 
-   const targetCard = el("div", {class:"card"}, [
+  
+  const targetCard = el("div", {class:"card"}, [
     el("div",{class:"card-head"},[el("h3",{},["Target"])]),
     el("div",{class:"card-body settings-form"},[
       field("Target grade for this subject", (()=>{
@@ -712,7 +740,7 @@ function refreshGradeSummaryOnly(subjectId){ renderGradePanel(subjectId); }
 function statCard(label, value){
   return el("div", {class:"stat-card"}, [ el("div",{class:"stat-label"},[label]), el("div",{class:"stat-value"},[value]) ]);
 }
- 
+
 const focusTimer = {
   mode:"focus", running:false, remaining:25*60, total:25*60, interval:null,
   sessionsThisCycle:0
@@ -722,7 +750,7 @@ function modeDuration(mode){
   if(mode==="focus") return s.focusDur*60;
   if(mode==="short") return s.shortDur*60;
   if(mode==="long") return s.longDur*60;
-  return s.focusDur*60;  
+  return s.focusDur*60; 
 }
 function setFocusMode(mode){
   focusTimer.mode = mode;
@@ -785,7 +813,8 @@ function completeTimerSession(){
   } else {
     toast("Break complete.");
   }
-   const s = state.settings;
+  
+  const s = state.settings;
   let next = "focus";
   if(focusTimer.mode==="focus"){
     next = (focusTimer.sessionsThisCycle % s.sessionsBeforeLong === 0) ? "long" : "short";
@@ -811,7 +840,7 @@ function renderFocus(){
   const todayCount = fs.history.filter(h=> new Date(h.date).toDateString()===new Date().toDateString() && h.mode!=="short" && h.mode!=="long").length;
   panel.appendChild(el("div",{class:"focus-stat-row"},[ el("span",{},["Sessions today"]), el("strong",{},[String(todayCount)]) ]));
 }
- 
+
 let noteSearchTerm = "";
 function openNoteModal(existing){
   const n = existing || { id:uid(), title:"", content:"", subject:"", created:new Date().toISOString(), updated:new Date().toISOString(), pinned:false, archived:false };
@@ -877,7 +906,8 @@ function renderNotes(){
     ]);
     wrap.appendChild(card);
   });
-} 
+}
+
 let fileFilter = "All";
 function openFileModal(existing){
   const f = existing || { id:uid(), name:"", url:"", description:"", subject:"", category:"Modules" };
@@ -944,14 +974,15 @@ function renderFiles(){
     wrap.appendChild(row);
   });
 }
- 
+
 function renderDashboard(){
   const h = new Date().getHours();
   const greet = h<12 ? "Good morning" : h<18 ? "Good afternoon" : "Good evening";
   $("#greeting").textContent = `${greet}, ${state.profile.name || "Student"}`;
   $("#greeting-sub").textContent = new Date().toLocaleDateString([], {weekday:"long", month:"long", day:"numeric"});
 
-   $all(".widget").forEach(w=>{
+  
+  $all(".widget").forEach(w=>{
     const key = w.dataset.widget;
     w.classList.toggle("hidden", state.settings.widgets[key]===false);
   });
@@ -968,7 +999,8 @@ function nextUpcomingClass(){
   const now = new Date();
   const order = orderedDays();
   const todayIdx = DAYS.indexOf(todayName());
-   for(let offset=0; offset<8; offset++){
+  
+  for(let offset=0; offset<8; offset++){
     const dayIdx = (todayIdx+offset)%7;
     const day = DAYS[dayIdx];
     const classes = state.classes.filter(c=>c.day===day).sort((a,b)=>a.start.localeCompare(b.start));
@@ -1012,7 +1044,7 @@ function renderNextClass(){
 function renderProgressWidget(){
   const box = $("#widget-progress");
   box.innerHTML = "";
-  const weekTasks = state.tasks;  
+  const weekTasks = state.tasks; 
   const total = weekTasks.length;
   const done = weekTasks.filter(t=>t.completed).length;
   const pct = total>0 ? Math.round(done/total*100) : 0;
@@ -1091,7 +1123,7 @@ function renderFocusStatsWidget(){
   box.appendChild(el("div",{class:"focus-stat-row"},[el("span",{},["Sessions completed"]), el("strong",{},[String(fs.sessionsCompleted)])]));
   box.appendChild(el("div",{class:"focus-stat-row"},[el("span",{},["Total focus time"]), el("strong",{},[Math.round(fs.totalFocusMinutes/60*10)/10+" hrs"])]));
 }
- 
+
 function fillSettingsForm(){
   const p = state.profile, s = state.settings;
   $("#s-name").value = p.name; $("#s-studentid").value = p.studentId; $("#s-program").value = p.program;
@@ -1107,11 +1139,13 @@ function fillSettingsForm(){
   $("#s-focusdur").value = s.focusDur; $("#s-shortdur").value = s.shortDur; $("#s-longdur").value = s.longDur; $("#s-sessionsbeforelong").value = s.sessionsBeforeLong;
   $("#s-theme").value = s.theme; $("#s-density").value = s.density; $("#s-radius").value = s.radius; $("#s-reducemotion").checked = s.reduceMotion;
 
-   const iab = $("#s-imageautobackup"); if(iab) iab.checked = s.imageAutoBackup !== false;
+  
+  const iab = $("#s-imageautobackup"); if(iab) iab.checked = s.imageAutoBackup !== false;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) ibt.value = s.imageBackupThreshold || 10;
   const idab = $("#s-imagedeleteafterbackup"); if(idab) idab.checked = !!s.imageDeleteAfterBackup;
 
-   ["s-theme","s-density","s-radius"].forEach(id=>{
+  
+  ["s-theme","s-density","s-radius"].forEach(id=>{
     const el = $("#"+id);
     if(el && !el._instantWired){
       el.addEventListener("change", ()=>{
@@ -1161,7 +1195,8 @@ function saveSettingsForm(){
   s.sessionsBeforeLong = Number($("#s-sessionsbeforelong").value)||4;
   s.theme = $("#s-theme").value; s.density = $("#s-density").value; s.radius = $("#s-radius").value; s.reduceMotion = $("#s-reducemotion").checked;
 
-   const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
+  
+  const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) s.imageBackupThreshold = Math.max(1, Number(ibt.value)||10);
   const idab = $("#s-imagedeleteafterbackup"); if(idab) s.imageDeleteAfterBackup = idab.checked;
 
@@ -1176,7 +1211,7 @@ function saveSettingsForm(){
   toast("Settings saved.");
 }
 
- let _jspdfLoading = null;
+let _jspdfLoading = null;
 function loadJsPdf(){
   if(window.jspdf) return Promise.resolve();
   if(_jspdfLoading) return _jspdfLoading;
@@ -1206,7 +1241,8 @@ async function exportDataPdf(){
     const margin = 40;
     let y = margin;
 
-     doc.setFontSize(18); doc.setFont("helvetica","bold");
+    
+    doc.setFontSize(18); doc.setFont("helvetica","bold");
     doc.text(state.profile.name || "My Coursework", margin, y); y += 22;
     doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(120);
     const subLine = [
@@ -1217,7 +1253,8 @@ async function exportDataPdf(){
     doc.text("Exported " + new Date().toLocaleString(), margin, y); y += 20;
     doc.setTextColor(0);
 
-     if(state.subjects.length){
+    
+    if(state.subjects.length){
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Subjects", margin, y); y += 6;
       doc.autoTable({
@@ -1231,7 +1268,8 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-     if(state.classes.length){
+    
+    if(state.classes.length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Weekly Schedule", margin, y); y += 6;
@@ -1255,7 +1293,8 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-     if(state.tasks && state.tasks.length){
+    
+    if(state.tasks && state.tasks.length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Assignments", margin, y); y += 6;
@@ -1273,7 +1312,8 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-     if(state.grades && Object.keys(state.grades).length){
+    
+    if(state.grades && Object.keys(state.grades).length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Grades", margin, y); y += 6;
@@ -1298,7 +1338,8 @@ async function exportDataPdf(){
       }
     }
 
-     const pageCount = doc.internal.getNumberOfPages();
+    
+    const pageCount = doc.internal.getNumberOfPages();
     for(let p=1; p<=pageCount; p++){
       doc.setPage(p);
       doc.setFontSize(8); doc.setTextColor(150);
@@ -1306,7 +1347,8 @@ async function exportDataPdf(){
       doc.text("mySchedule", margin, doc.internal.pageSize.getHeight() - 20);
     }
 
-     const fname = (state.profile.name || "my-coursework").toLowerCase().replace(/\s+/g,"-") + "-" + new Date().toISOString().slice(0,10) + ".pdf";
+    
+    const fname = (state.profile.name || "my-coursework").toLowerCase().replace(/\s+/g,"-") + "-" + new Date().toISOString().slice(0,10) + ".pdf";
     doc.save(fname);
     toast("PDF exported.");
   }catch(err){
@@ -1315,7 +1357,7 @@ async function exportDataPdf(){
   }
 }
 
- function exportData(){
+function exportData(){
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1323,6 +1365,248 @@ async function exportDataPdf(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast("Backup exported. Save this JSON file to import on another device.");
+}
+
+async function saveSession(){
+  const hasTasks  = state.tasks?.length > 0;
+  const hasNotes  = state.notes?.length > 0;
+  const hasGrades = Object.keys(state.grades||{}).length > 0;
+  const hasImages = state.images?.length > 0;
+  const hasStats  = state.focusStats?.sessionsCompleted > 0;
+
+  if(!hasTasks && !hasNotes && !hasGrades && !hasImages && !hasStats){
+    toast("Nothing to save — no tasks, notes, grades, or images recorded yet.");
+    return;
+  }
+
+  
+  const counts = [];
+  if(hasTasks)  counts.push((state.tasks.length) + " task" + (state.tasks.length===1?"":"s"));
+  if(hasNotes)  counts.push((state.notes.length) + " note" + (state.notes.length===1?"":"s"));
+  if(hasGrades) counts.push("grades for " + Object.keys(state.grades).length + " subject" + (Object.keys(state.grades).length===1?"":"s"));
+  if(hasImages) counts.push((state.images.length) + " image" + (state.images.length===1?"":"s"));
+  if(hasStats)  counts.push(state.focusStats.sessionsCompleted + " focus session" + (state.focusStats.sessionsCompleted===1?"":"s"));
+
+  const body = el("div", {}, [
+    el("p", {}, ["This will export a PDF record of your current session, then clear the saved items."]),
+    el("div", {class:"session-summary-box"}, [
+      el("p", {class:"small", style:"font-weight:600;margin-bottom:6px;"}, ["Will be saved to PDF & cleared:"]),
+      el("ul", {class:"session-summary-list"}, counts.map(c=>el("li",{class:"small"},[c]))),
+    ]),
+    el("div", {class:"session-summary-box", style:"margin-top:8px;"}, [
+      el("p", {class:"small muted"}, ["Not affected: schedule, subjects, files, settings, profile"])
+    ]),
+    el("div", {class:"modal-actions"}, [
+      el("button", {class:"btn btn-ghost", onclick:closeModal}, ["Cancel"]),
+      el("div", {class:"modal-actions-right"}, [
+        el("button", {class:"btn btn-primary", onclick:async ()=>{
+          closeModal();
+          await doSaveSession();
+        }}, ["Save & Clear"])
+      ])
+    ])
+  ]);
+  openModal("Save Session", body);
+}
+
+async function doSaveSession(){
+  toast("Generating session PDF...");
+  try{
+    await loadJsPdf();
+    const { jsPDF } = window.jspdf;
+    const doc  = new jsPDF({ unit:"pt", format:"a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    const contentW = pageW - margin * 2;
+    let y = margin;
+
+    function checkPage(needed){
+      if(y + needed > pageH - 50){ doc.addPage(); y = margin; }
+    }
+
+    function sectionTitle(title){
+      checkPage(30);
+      doc.setFontSize(13); doc.setFont("helvetica","bold"); doc.setTextColor(30);
+      doc.text(title, margin, y); y += 6;
+      doc.setDrawColor(200); doc.line(margin, y, pageW - margin, y); y += 12;
+      doc.setFont("helvetica","normal"); doc.setTextColor(0);
+    }
+
+    
+    doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.setTextColor(20);
+    doc.text(state.profile.name || "Student", margin, y); y += 24;
+
+    doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(100);
+    const subLine = [state.profile.program, state.profile.year, state.profile.section, state.profile.school].filter(Boolean).join("  •  ");
+    if(subLine){ doc.text(subLine, margin, y); y += 14; }
+    doc.text("Session saved: " + new Date().toLocaleString(), margin, y); y += 20;
+    doc.setDrawColor(60); doc.setLineWidth(1); doc.line(margin, y, pageW-margin, y); y += 18;
+    doc.setLineWidth(0.5); doc.setTextColor(0);
+
+    
+    if(state.tasks?.length){
+      sectionTitle("Tasks & Assignments");
+      const rows = state.tasks.map(t=>{
+        const subj = state.subjects.find(s=>s.id===t.subject);
+        return [t.title||"", subj?subj.name:"", t.due||"", t.priority||"", t.status||""];
+      });
+      doc.autoTable({
+        startY: y,
+        head:[["Title","Subject","Due","Priority","Status"]],
+        body: rows,
+        theme:"striped", styles:{fontSize:8, cellPadding:4},
+        headStyles:{fillColor:[40,40,50], textColor:255, fontStyle:"bold"},
+        margin:{left:margin, right:margin},
+        didDrawPage: (d)=>{ y = d.cursor.y; }
+      });
+      y = doc.lastAutoTable.finalY + 18;
+    }
+
+    
+    if(state.notes?.length){
+      checkPage(30);
+      sectionTitle("Notes");
+      for(const note of state.notes){
+        const subj = state.subjects.find(s=>s.id===note.subject);
+        const content = note.content || "";
+        const contentLines = doc.splitTextToSize(content, contentW);
+
+        
+        checkPage(36);
+        doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(20);
+        doc.text((note.title||"Untitled") + (subj ? "  —  " + subj.name : ""), margin, y); y += 13;
+        doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100);
+        doc.text(note.createdAt ? new Date(note.createdAt).toLocaleDateString() : "", margin, y); y += 13;
+
+        
+        doc.setTextColor(40); doc.setFontSize(9);
+        for(let li = 0; li < contentLines.length; li++){
+          if(y + 11 > pageH - 50){ doc.addPage(); y = margin; }
+          doc.text(contentLines[li], margin, y); y += 11;
+        }
+
+        y += 10;
+        if(y + 2 > pageH - 50){ doc.addPage(); y = margin; }
+        doc.setDrawColor(220); doc.line(margin, y, pageW-margin, y); y += 12;
+        doc.setTextColor(0);
+      }
+    }
+
+    
+    if(Object.keys(state.grades||{}).length){
+      checkPage(30);
+      sectionTitle("Grades");
+      const gradeRows = [];
+      Object.entries(state.grades).forEach(([subjId, rec])=>{
+        const subj = state.subjects.find(s=>s.id===subjId);
+        const name = subj?subj.name:"?";
+        
+        const cats = rec.categories||[];
+        let avg = "";
+        if(cats.length){
+          const totalWeight = cats.reduce((s,c)=>s+(c.weight||0), 0);
+          if(totalWeight > 0){
+            const weighted = cats.reduce((s,c)=>s + ((c.score/c.max)*100*(c.weight||0)), 0);
+            avg = (weighted/totalWeight).toFixed(2) + "%";
+          } else {
+            const simple = cats.reduce((s,c)=>s + (c.score/c.max)*100, 0) / cats.length;
+            avg = simple.toFixed(2) + "%";
+          }
+        }
+        cats.forEach((cat,i)=>{
+          gradeRows.push([
+            i===0 ? name : "",
+            cat.name||"",
+            cat.score,
+            cat.max,
+            (cat.weight||0) + "%",
+            i===0 && avg ? avg : ""
+          ]);
+        });
+        if(!cats.length) gradeRows.push([name,"—","—","—","—",""]);
+      });
+      doc.autoTable({
+        startY: y,
+        head:[["Subject","Category","Score","Max","Weight","Average"]],
+        body: gradeRows,
+        theme:"striped", styles:{fontSize:8, cellPadding:4},
+        headStyles:{fillColor:[40,40,50], textColor:255, fontStyle:"bold"},
+        margin:{left:margin, right:margin}
+      });
+      y = doc.lastAutoTable.finalY + 18;
+    }
+
+    
+    if(state.focusStats?.sessionsCompleted > 0){
+      checkPage(60);
+      sectionTitle("Focus Stats");
+      const fs = state.focusStats;
+      doc.setFontSize(9); doc.setTextColor(40);
+      doc.text("Sessions completed: " + fs.sessionsCompleted, margin, y); y += 13;
+      doc.text("Total focus time: " + fs.totalFocusMinutes + " minutes", margin, y); y += 13;
+      y += 6;
+    }
+
+    
+    if(state.images?.length){
+      checkPage(30);
+      sectionTitle("Images (" + state.images.length + ")");
+      const imgPerRow = 3;
+      const imgSize   = (contentW - (imgPerRow-1)*10) / imgPerRow;
+
+      for(let i = 0; i < state.images.length; i++){
+        const img = state.images[i];
+        const col = i % imgPerRow;
+        if(col === 0){ checkPage(imgSize + 30); }
+        const x = margin + col * (imgSize + 10);
+
+        try{
+          doc.addImage(img.dataUrl, "JPEG", x, y, imgSize, imgSize, undefined, "FAST");
+        }catch(e){  }
+
+        
+        doc.setFontSize(7); doc.setTextColor(80);
+        const cap = doc.splitTextToSize(img.title||"Untitled", imgSize);
+        doc.text(cap[0], x, y + imgSize + 10);
+
+        if(col === imgPerRow - 1 || i === state.images.length - 1){
+          y += imgSize + 24;
+        }
+      }
+      y += 10;
+    }
+
+    
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let p = 1; p <= pageCount; p++){
+      doc.setPage(p);
+      doc.setFontSize(8); doc.setTextColor(160);
+      doc.text("mySchedule  •  " + (state.profile.name||""), margin, pageH - 20);
+      doc.text("Page " + p + " of " + pageCount, pageW - margin, pageH - 20, {align:"right"});
+    }
+
+    
+    const stamp = new Date().toISOString().slice(0,10);
+    const fname = (state.profile.name||"session").toLowerCase().replace(/\s+/g,"-") + "-session-" + stamp + ".pdf";
+    doc.save(fname);
+
+    
+    state.tasks       = [];
+    state.notes       = [];
+    state.grades      = {};
+    state.images      = [];
+    state.focusStats  = { sessionsCompleted:0, totalFocusMinutes:0, history:[] };
+    
+    state.settings.imageBackupLastCount = 0;
+    saveState();
+    renderAll();
+    toast("Session saved as PDF and cleared.");
+
+  }catch(err){
+    console.error(err);
+    toast(err.message || "Could not generate session PDF.");
+  }
 }
 function importData(file){
   const reader = new FileReader();
@@ -1352,7 +1636,8 @@ function importData(file){
   reader.readAsText(file);
 }
 function resetData(){
-   const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
+  
+  const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
                   state.notes.length || state.images.length || state.files.length;
 
   const body = el("div", {}, [
@@ -1382,7 +1667,7 @@ function resetData(){
   ]);
   openModal("Reset All Data", body);
 }
- 
+
 const ICCT_DAY_MAP = {
   "M":   ["Monday"],
   "T":   ["Tuesday"],
@@ -1413,10 +1698,13 @@ const ICCT_DAY_MAP = {
 };
 
 function expandDayCodes(raw){
-   if(ICCT_DAY_MAP[raw]) return ICCT_DAY_MAP[raw];
-   const up = Object.keys(ICCT_DAY_MAP).find(k=>k.toUpperCase()===raw.toUpperCase());
+  
+  if(ICCT_DAY_MAP[raw]) return ICCT_DAY_MAP[raw];
+  
+  const up = Object.keys(ICCT_DAY_MAP).find(k=>k.toUpperCase()===raw.toUpperCase());
   if(up) return ICCT_DAY_MAP[up];
-   const order = ["MTh","TTh","ThSa","TThS","MWF","WSa","MSa","TSa","FSa","WS","MS","TS","MW","MF","MT","TW","WF","ThF","Th","Sa","Su","Mo","Tu","We","Fr","M","T","W","F","S"];
+  
+  const order = ["MTh","TTh","ThSa","TThS","MWF","WSa","MSa","TSa","FSa","WS","MS","TS","MW","MF","MT","TW","WF","ThF","Th","Sa","Su","Mo","Tu","We","Fr","M","T","W","F","S"];
   const days = [];
   let rem = raw;
   while(rem.length > 0){
@@ -1429,13 +1717,14 @@ function expandDayCodes(raw){
         break;
       }
     }
-    if(!matched) break;  
+    if(!matched) break; 
   }
   return days.length ? days : null;
 }
 
 function parseTimeRange(str){
-   const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  
+  const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
   if(!m) return null;
   function to24(h, min, period){
     h = parseInt(h); min = parseInt(min);
@@ -1451,27 +1740,63 @@ function parseTimeRange(str){
     end:   to24(m[4], m[5], m[6] || m[3])
   };
 }
- 
+
 function parseScheduleText(rawText){
   const rows = [];
-  const lines = rawText.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
 
-   const COR_DAY_RE = /\b(TThS|MWF|MTh|TTh|ThF|ThSa|WSa|MSa|TSa|FSa|MW|MF|MT|TW|WF|WS|MS|Th|Sa|Su|M|T|W|F|S)\b/;
-  const TIME_RE    = /(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-\u2013\u2014to]+\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)/i;
-  const ROOM_RE    = /\b([A-Z]{1,4}\d[\w.\-]*|GYM|ZOOM|ONLINE)\b/;
-  const COURSE_CODE_RE = /\b([A-Z]{2,8}-?\d{2,3}[A-Z]?)\b/;
-  const DAY_HEADER_RE = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)$/i;
+  
+  
+  
+  const text = rawText
+    .replace(/\u2022/g, "•")          
+    .replace(/\t/g, " ")
+    .replace(/ {2,}/g, " ");
 
-  function addRow(subject, day, time, room, type, instructor){
-    if(!subject || !day || !time) return;
-    rows.push({
-      id: uid(), include: true,
-      subject: subject.trim(),
-      day, start: time.start, end: time.end,
-      room: (room||"").trim(),
-      type: type || "Face to Face",
-      instructor: (instructor||"").trim()
-    });
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  
+  
+  
+  const TIME_RE  = /(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-–—to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i;
+  const DAY_RE   = /\b(TThS|MWF|MTh|TTh|ThSa|WSa|MSa|TSa|FSa|ThF|WS|MS|MW|MF|MT|TW|WF|Th|Sa|Su|M|T|W|F|S)\b/;
+  const CODE_RE  = /^(OL[A-Z0-9\-]+)\b/;
+  const HDR_RE   = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)$/i;
+  const SKIP_RE  = /^(Course|Section|Lec\s*Units|Lab\s*Units|Days|Time and Date|Room|Tuition|Miscellaneous|Laboratory Fee|Other Fees|Total Amount|Downpayment|Installment|TERM|AMOUNT|DUE DATE|LATE|PAID|Student|Full Name|Home Address|Academic|Contact|Program|Year Level|Sex|LRN|ICCT|Rizal|OFFICIAL|REMARKS|Control|Google Classroom|Gclass)/i;
+
+  const DAY_MAP = {
+    M:["Monday"], T:["Tuesday"], W:["Wednesday"], Th:["Thursday"],
+    F:["Friday"], Sa:["Saturday"], S:["Saturday"], Su:["Sunday"],
+    MT:["Monday","Tuesday"], MW:["Monday","Wednesday"], MF:["Monday","Friday"],
+    MTh:["Monday","Thursday"], TW:["Tuesday","Wednesday"], TTh:["Tuesday","Thursday"],
+    WF:["Wednesday","Friday"], ThF:["Thursday","Friday"],
+    MWF:["Monday","Wednesday","Friday"], TThS:["Tuesday","Thursday","Saturday"],
+    WSa:["Wednesday","Saturday"], WS:["Wednesday","Saturday"],
+    MSa:["Monday","Saturday"], MS:["Monday","Saturday"],
+    TSa:["Tuesday","Saturday"], ThSa:["Thursday","Saturday"], FSa:["Friday","Saturday"],
+    ThF:["Thursday","Friday"], TW:["Tuesday","Wednesday"]
+  };
+
+  function expandDays(code){
+    if(DAY_MAP[code]) return DAY_MAP[code];
+    
+    const k = Object.keys(DAY_MAP).find(x => x.toLowerCase() === code.toLowerCase());
+    return k ? DAY_MAP[k] : [code];
+  }
+
+  function parseTime(str){
+    const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if(!m) return str;
+    let h = parseInt(m[1]), min = parseInt(m[2]);
+    const p = m[3].toUpperCase();
+    if(p === "PM" && h !== 12) h += 12;
+    if(p === "AM" && h === 12) h = 0;
+    return String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0");
+  }
+
+  function parseTimeRange(raw){
+    const m = raw.match(TIME_RE);
+    if(!m) return null;
+    return { start: parseTime(m[1]), end: parseTime(m[2]) };
   }
 
   function detectType(text){
@@ -1479,127 +1804,180 @@ function parseScheduleText(rawText){
     if(t.includes("ZOOM")) return "Zoom";
     if(t.includes("GYM"))  return "Face to Face";
     if(t.includes("ONLINE")) return "Online";
-    if(t.includes("FACE")) return "Face to Face";
     return "Face to Face";
-  } 
-   let currentSubject = "";
-  let currentCode    = "";
-  let lastRowIdx     = -1;  
+  }
 
-  for(let i = 0; i < lines.length; i++){
-    const line = lines[i];
-
-     if(/^(Course|Section|Lec\s*Units|Lab\s*Units|Days|Time and Date|Room|Total|Downpayment|Installment|TERM|AMOUNT|DUE DATE)/i.test(line)) continue;
-    if(/^(Student|Full Name|Home Address|Academic|Contact|Program|Year Level|Sex|LRN)/i.test(line)) continue;
-
-     const codeMatch = line.match(COURSE_CODE_RE);
-    if(codeMatch && line.length < 80 && !TIME_RE.test(line) && !/LFAU/i.test(line)){
-      currentCode = codeMatch[1];
-      currentSubject = "";  
-      const afterCode = line.replace(codeMatch[1],"").replace(/Google\s+Classroom/i,"").trim();
-      if(afterCode && afterCode.length > 3 && !/Gclass/i.test(afterCode)){
-        currentSubject = afterCode;
-      }
-      continue;
-    }
-
-     if(currentCode && !currentSubject &&
-       !/Google\s+Classroom|Gclass\s+Code|LFAU|Section/i.test(line) &&
-       /[A-Za-z]{4,}/.test(line) && line.length < 100 &&
-       !COR_DAY_RE.test(line) && !TIME_RE.test(line)){
-      currentSubject = line.trim();
-      continue;
-    }
-
-     if(/Gclass\s*Code/i.test(line)) continue;
-
-     const dayMatch  = line.match(COR_DAY_RE);
-    const timeMatch = line.match(TIME_RE);
-
-    if(dayMatch && timeMatch){
-      const days = expandDayCodes(dayMatch[1]);
-      const time = parseTimeRange(timeMatch[1]);
-      if(!days || !time) continue;
-
-      const roomMatch = line.match(ROOM_RE);
-      const room = roomMatch ? roomMatch[1] : "";
-      const type = detectType(line);
-      const name = currentSubject || currentCode || "Unknown Subject";
-
-      lastRowIdx = rows.length;
-      days.forEach(day=>addRow(name, day, time, room, type, ""));
-      continue;
-    }
-
-     if(timeMatch && !dayMatch && lastRowIdx >= 0){
-      const time = parseTimeRange(timeMatch[1]);
-      if(!time) continue;
-      const roomMatch = line.match(ROOM_RE);
-      const room = roomMatch ? roomMatch[1] : "";
-      const type = detectType(line);
-       const prevRow = rows[lastRowIdx];
-      if(prevRow){
-         const sameBatchDays = new Set();
-        for(let k = lastRowIdx; k < rows.length; k++){
-          if(rows[k].subject === prevRow.subject) sameBatchDays.add(rows[k].day);
-        }
-        sameBatchDays.forEach(day=>addRow(prevRow.subject, day, time, room, type, ""));
-      }
-      continue;
+  function addRow(subject, day, time, room, type){
+    if(!subject || !day || !time) return;
+    const dup = rows.find(r =>
+      r.subject === subject && r.day === day &&
+      r.start === time.start && r.end === time.end
+    );
+    if(!dup){
+      rows.push({ id:uid(), include:true,
+        subject:subject.trim(), day, start:time.start, end:time.end,
+        room:(room||"").trim(), type:type||"Face to Face", instructor:"" });
     }
   }
- 
-  let curDay = null;
-  let pendingSubject = "";
+
+  
+  
+  
+  
+  let curSubject  = "";
+  let curCode     = "";
+  let lastDays    = [];   
+
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
-    const dayHeaderMatch = line.match(DAY_HEADER_RE);
-    if(dayHeaderMatch){
-      curDay = dayHeaderMatch[1].charAt(0).toUpperCase() + dayHeaderMatch[1].slice(1).toLowerCase();
-      pendingSubject = "";
+    if(SKIP_RE.test(line)) continue;
+
+    
+    const codeM = line.match(CODE_RE);
+    if(codeM){
+      curCode    = codeM[1];
+      curSubject = "";
+      
+      for(let j = i+1; j < Math.min(i+5, lines.length); j++){
+        const next = lines[j];
+        if(SKIP_RE.test(next)) continue;
+        if(/^LFAU|^[A-Z]{4}\d{3}M\d{3}/.test(next)) break; 
+        if(/Gclass/i.test(next)) continue;
+        if(/Google Classroom/i.test(next)) continue;
+        if(next.length > 3 && /[a-z]/.test(next)){
+          curSubject = next.trim();
+          break;
+        }
+      }
+      continue;
+    }
+
+    
+    if(curCode && !curSubject && !SKIP_RE.test(line) &&
+       !/^LFAU|Gclass|Google/i.test(line) &&
+       /[a-zA-Z]{4,}/.test(line) && line.length < 90 &&
+       !DAY_RE.test(line) && !TIME_RE.test(line)){
+      curSubject = line.trim();
+      continue;
+    }
+
+    
+    const dayM  = line.match(DAY_RE);
+    const timeM = line.match(TIME_RE);
+
+    if(dayM && timeM){
+      const days  = expandDays(dayM[1]);
+      const time  = parseTimeRange(line);
+      if(!time) continue;
+
+      
+      
+      const stripped = line
+        .replace(TIME_RE, "")
+        .replace(DAY_RE, "")
+        .replace(/•\s*(LEC|LAB)/gi, "")
+        .replace(/ZOOM|GYM|ONLINE|FACE\s*TO\s*FACE/gi, "")
+        .replace(/\s+/g, " ").trim();
+
+      
+      const roomM = line.match(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g);
+      
+      const room  = (roomM||[]).filter(r => !DAY_MAP[r] && r !== dayM[1]).join(", ");
+      const type  = detectType(line);
+      const name  = curSubject || curCode || "Unknown";
+
+      lastDays = days;
+      days.forEach(day => addRow(name, day, time, room, type));
+      continue;
+    }
+
+    
+    
+    if(timeM && !dayM && lastDays.length > 0){
+      const time  = parseTimeRange(line);
+      if(!time) continue;
+      const roomM = line.match(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g);
+      const room  = (roomM||[]).filter(r => !DAY_MAP[r]).join(", ");
+      const type  = detectType(line);
+      const name  = curSubject || curCode || "Unknown";
+      lastDays.forEach(day => addRow(name, day, time, room, type));
+      continue;
+    }
+
+    
+    if(dayM && !timeM){
+      for(let j = i+1; j <= Math.min(i+3, lines.length-1); j++){
+        const ahead = lines[j];
+        const aheadTime = ahead.match(TIME_RE);
+        if(aheadTime){
+          const days  = expandDays(dayM[1]);
+          const time  = parseTimeRange(ahead);
+          if(!time) break;
+          const roomM = ahead.match(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g);
+          const room  = (roomM||[]).filter(r => !DAY_MAP[r] && r !== dayM[1]).join(", ");
+          const type  = detectType(ahead + " " + line);
+          const name  = curSubject || curCode || "Unknown";
+          lastDays = days;
+          days.forEach(day => addRow(name, day, time, room, type));
+          break;
+        }
+      }
+    }
+  }
+
+  
+  
+  
+  
+  let curDay = null;
+  let pendingSubj = "";
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    const hdrM = line.match(HDR_RE);
+    if(hdrM){
+      curDay = hdrM[1].charAt(0).toUpperCase() + hdrM[1].slice(1).toLowerCase();
+      pendingSubj = "";
       continue;
     }
     if(!curDay) continue;
-    if(/^NO\s+CLASSES?$/i.test(line)){ continue; }
+    if(/^NO\s+CLASS/i.test(line)) continue;
 
-    const timeMatch = line.match(TIME_RE);
-    if(timeMatch){
-      const time = parseTimeRange(timeMatch[1]);
+    const timeM = line.match(TIME_RE);
+    if(timeM){
+      const time = parseTimeRange(line);
       if(!time) continue;
+      const roomM = line.match(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g);
+      const room  = (roomM||[]).join(", ");
+      const type  = detectType(line);
 
-      const roomMatch = line.match(ROOM_RE);
-      const room = roomMatch ? roomMatch[1] : "";
-      const type = detectType(line);
+      
+      let subj = line
+        .replace(TIME_RE, "")
+        .replace(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g, "")
+        .replace(/ZOOM|GYM|ONLINE|FACE\s*TO\s*FACE|F2F|•?\s*(LEC|LAB)/gi, "")
+        .replace(/\s+/g, " ").trim();
 
-       let subj = line
-        .replace(timeMatch[1],"")
-        .replace(ROOM_RE,"")
-        .replace(/ZOOM|FACE\s*TO\s*FACE|F2F|ONLINE|GYM|LEC|LAB/gi,"")
-        .replace(/[\|\u2022•]/g," ")
-        .replace(/\s+/g," ")
-        .trim();
-
-       if(!subj || subj.length < 3){
-         if(pendingSubject) subj = pendingSubject;
-        else if(lines[i-1] && !TIME_RE.test(lines[i-1]) && !DAY_HEADER_RE.test(lines[i-1]) && lines[i-1].length > 3){
-          subj = lines[i-1].trim();
-        }
-         else if(lines[i+1] && !TIME_RE.test(lines[i+1]) && !DAY_HEADER_RE.test(lines[i+1]) && lines[i+1].length > 3){
-          subj = lines[i+1].trim();
-        }
+      if(!subj || subj.length < 3){
+        
+        subj = pendingSubj
+          || (lines[i-1] && !TIME_RE.test(lines[i-1]) && !HDR_RE.test(lines[i-1]) && lines[i-1].length > 2 ? lines[i-1] : "")
+          || (lines[i+1] && !TIME_RE.test(lines[i+1]) && lines[i+1].length > 2 ? lines[i+1] : "")
+          || "Unknown";
       }
-      if(!subj) subj = "Unknown Subject";
-      pendingSubject = subj;
-
-      addRow(subj, curDay, time, room, type, "");
-    } else if(line.length > 3 && !/NO\s+CLASSES?/i.test(line) && !DAY_HEADER_RE.test(line)){
-       pendingSubject = line.trim();
+      pendingSubj = subj;
+      addRow(subj, curDay, time, room, type);
+    } else if(line.length > 2 && !SKIP_RE.test(line) && !HDR_RE.test(line)){
+      pendingSubj = line;
     }
   }
- 
+
+  
+  
+  
   const seen = new Set();
-  return rows.filter(r=>{
-    const k = r.day + "|" + r.start + "|" + r.end + "|" + r.subject.toUpperCase().replace(/\s+/g,"").slice(0,20);
+  return rows.filter(r => {
+    const k = r.day + "|" + r.start + "|" + r.end + "|" + r.subject.replace(/\s+/g,"").slice(0,20).toUpperCase();
     if(seen.has(k)) return false;
     seen.add(k); return true;
   });
@@ -1608,12 +1986,8 @@ function parseScheduleText(rawText){
 const AI_KEY_STORAGE   = "coursework.ai_key";
 const AI_PROV_STORAGE  = "coursework.ai_provider";
 
- 
 const AI_PROVIDERS = {
 
-
-
- 
   gemini: {
     label: "Google Gemini 2.0 Flash [FREE]",
     vision: true, free: true,
@@ -1639,7 +2013,8 @@ const AI_PROVIDERS = {
     vision: true, free: true,
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
-       const userContent = mediaType === "application/pdf"
+      
+      const userContent = mediaType === "application/pdf"
         ? userPrompt + " (PDF provided as text — do your best)"
         : [
             { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
@@ -1771,7 +2146,8 @@ const AI_PROVIDERS = {
     extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
   },
 
- 
+  
+
   groq: {
     label: "Groq LLaMA 3.3 text-only [FREE] + OCR",
     vision: false, free: true,
@@ -1933,9 +2309,10 @@ function promptForApiKey(){
 async function requireApiKey(){
   const key = getApiKey();
   if(key) return key;
-   throw new Error("NO_API_KEY");
+  
+  throw new Error("NO_API_KEY");
 }
- 
+
 let _pdfjsLoading = null;
 function loadPdfJs(){
   if(window.pdfjsLib) return Promise.resolve();
@@ -1965,7 +2342,8 @@ async function extractTextFromPdf(base64Data, onProgress){
     if(onProgress) onProgress(Math.round((p/pdf.numPages)*100));
     const page  = await pdf.getPage(p);
     const tc    = await page.getTextContent();
-     const byY = {};
+    
+    const byY = {};
     tc.items.forEach(item=>{
       const y = Math.round(item.transform[5]);
       if(!byY[y]) byY[y]=[];
@@ -1978,7 +2356,7 @@ async function extractTextFromPdf(base64Data, onProgress){
   return fullText;
 }
 
- let _tesseractLoading = null;
+let _tesseractLoading = null;
 function loadTesseract(){
   if(window.Tesseract) return Promise.resolve();
   if(_tesseractLoading) return _tesseractLoading;
@@ -2018,7 +2396,8 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
   const provKey = getProvider();
   const provider = AI_PROVIDERS[provKey] || AI_PROVIDERS.anthropic;
 
-   if(!provider.vision){
+  
+  if(!provider.vision){
     if(progressCallback) progressCallback(15, "Running OCR on image...");
     let ocrText = "";
     if(mediaType === "application/pdf"){
@@ -2056,8 +2435,9 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
     }
     return provider.extractText(await response.json());
   }
- 
-   if(progressCallback) progressCallback(30, "Sending image to " + provider.label + "...");
+
+  
+  if(progressCallback) progressCallback(30, "Sending image to " + provider.label + "...");
   return callProviderAPI(provider, key, systemPrompt, userPrompt, base64Data, mediaType);
 }
 
@@ -2073,7 +2453,7 @@ function readFileAsBase64(file){
     reader.onerror = ()=>reject(new Error("Could not read file."));
     reader.readAsDataURL(file);
   });
-} 
+}
 
 const SCHEDULE_SYSTEM_PROMPT = `You are an expert at reading Filipino college/university class schedule images (including printed COR, enrollment forms, and digital schedule screenshots).
 Extract all class schedule entries and return ONLY a valid JSON array, no markdown, no explanation, no extra text.
@@ -2149,7 +2529,6 @@ function normalizeClassType(t){
   if(tl.includes("face")) return "Face to Face";
   return state.settings.defaultClassType;
 }
- 
 
 const GRADE_SYSTEM_PROMPT = `You are an expert at reading Filipino college/university grade sheets, report cards, and transcript images (including COR grades, class record screenshots, and grade printouts).
 Extract all grade entries and return ONLY a valid JSON array, no markdown, no explanation.
@@ -2195,7 +2574,6 @@ async function parseGradesWithAI(base64Data, mediaType, progressCallback){
     weight: Number(r.weight)||0
   })).filter(r=>r.subject);
 }
- 
 
 const SUBJECT_SYSTEM_PROMPT = `You are an expert at reading Filipino college enrollment forms, class cards, and COR (Certificate of Registration) images.
 Extract all subjects/courses listed and return ONLY a valid JSON array, no markdown, no explanation.
@@ -2233,7 +2611,7 @@ async function parseSubjectsWithAI(base64Data, mediaType, progressCallback){
     room: String(r.room||"").trim(),
     schedule: String(r.schedule||"").trim()
   })).filter(r=>r.name);
-} 
+}
 
 function buildDropZone(labelText, subText){
   const fileInput = el("input", {type:"file", accept:"image/*,application/pdf", style:"display:none"});
@@ -2276,7 +2654,7 @@ function makeApiKeyBtn(){
   }, ["\uD83D\uDD11 API Key"]);
 }
 
- function openImportImageModal(){
+function openImportImageModal(){
   let extractedRows = [];
   const { dropZoneEl, onFile } = buildDropZone("Photo/screenshot of your class schedule or COR");
   const prog = buildProgressEl();
@@ -2304,7 +2682,8 @@ function makeApiKeyBtn(){
         prog.set(10, "Sending to AI...");
         extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
       } else {
-         let rawText = "";
+        
+        let rawText = "";
         if(imgData.isPdf){
           prog.set(10, "Reading PDF...");
           rawText = await extractTextFromPdf(imgData.base64, pct=>prog.set(10+Math.round(pct*0.7), "Reading PDF... "+pct+"%"));
@@ -2404,7 +2783,7 @@ function makeApiKeyBtn(){
   }
 }
 
- function openImportGradeModal(){
+function openImportGradeModal(){
   const { dropZoneEl, onFile } = buildDropZone("Photo of your grade sheet, report card, or class record");
   const prog = buildProgressEl();
   const resultsWrap = el("div", {class:"hidden"});
@@ -2501,7 +2880,7 @@ function makeApiKeyBtn(){
   }
 }
 
- function openImportSubjectModal(){
+function openImportSubjectModal(){
   const { dropZoneEl, onFile } = buildDropZone("Photo of your enrollment form, COR, or class list");
   const prog = buildProgressEl();
   const resultsWrap = el("div", {class:"hidden"});
@@ -2529,7 +2908,8 @@ function makeApiKeyBtn(){
         prog.set(20,"Sending to AI...");
         subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
       } else {
-         let rawText = "";
+        
+        let rawText = "";
         if(imgData.isPdf){
           prog.set(10,"Reading PDF...");
           rawText = await extractTextFromPdf(imgData.base64, pct=>prog.set(10+Math.round(pct*0.7),"Reading PDF... "+pct+"%"));
@@ -2611,7 +2991,6 @@ function makeApiKeyBtn(){
   }
 }
 
- 
 function runSearch(term){
   const box = $("#search-results");
   if(!term){ box.classList.add("hidden"); box.innerHTML=""; return; }
@@ -2644,10 +3023,11 @@ function runSearch(term){
 function switchToNav(view){
   switchView(view);
 }
- 
+
 function showSetupIfNeeded(){
   if(state.setupDone){
     $("#setup-screen").classList.add("hidden");
+    $("#onboarding-overlay").classList.add("hidden");
     $("#app").classList.remove("hidden");
     return;
   }
@@ -2664,19 +3044,80 @@ function finishSetup(skip){
   state.setupDone = true;
   saveState();
   $("#setup-screen").classList.add("hidden");
+  showOnboarding();
+}
+
+function showOnboarding(){
+  const overlay = $("#onboarding-overlay");
+  if(!overlay) { enterApp(); return; }
+  overlay.classList.remove("hidden");
+  initOnboarding();
+}
+
+function enterApp(){
+  const overlay = $("#onboarding-overlay");
+  if(overlay) overlay.classList.add("hidden");
   $("#app").classList.remove("hidden");
   renderAll();
 }
- 
+
+function initOnboarding(){
+  const track  = $("#ob-track");
+  const dotsEl = $("#ob-dots");
+  const prevBtn= $("#ob-prev");
+  const nextBtn= $("#ob-next");
+  const total  = track ? track.children.length : 0;
+  let cur = 0;
+
+  dotsEl.innerHTML = "";
+  for(let i=0;i<total;i++){
+    const d = el("div",{class:"ob-dot"+(i===0?" active":""),onclick:()=>goTo(i)});
+    dotsEl.appendChild(d);
+  }
+
+  function goTo(idx, dir){
+    const prev = cur;
+    cur = Math.max(0, Math.min(total-1, idx));
+    track.style.transform = "translateX(-" + (cur*100) + "%)";
+    dotsEl.querySelectorAll(".ob-dot").forEach((d,i)=>d.classList.toggle("active",i===cur));
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === total-1;
+    nextBtn.textContent = cur === total-1 ? "" : "→";
+  }
+
+  goTo(0);
+
+  prevBtn.onclick = ()=>goTo(cur-1);
+  nextBtn.onclick = ()=>{
+    if(cur === total-1) enterApp();
+    else goTo(cur+1);
+  };
+
+  const doneBtn = $("#ob-done");
+  if(doneBtn) doneBtn.onclick = enterApp;
+
+  const skipBtn = $("#ob-skip");
+  if(skipBtn) skipBtn.onclick = enterApp;
+
+  
+  let touchStartX = 0;
+  track.addEventListener("touchstart", e=>{ touchStartX = e.touches[0].clientX; }, {passive:true});
+  track.addEventListener("touchend", e=>{
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if(Math.abs(dx) > 50){ dx < 0 ? goTo(cur+1) : goTo(cur-1); }
+  });
+}
+
 let _imageSearchQuery = "";
 
- async function compressImageFile(file, maxDim, quality){
+async function compressImageFile(file, maxDim, quality){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>{
-         let w = img.width, h = img.height;
+        
+        let w = img.width, h = img.height;
         const scale = Math.min(1, maxDim / Math.max(w, h));
         w = Math.round(w * scale);
         h = Math.round(h * scale);
@@ -2704,7 +3145,8 @@ async function handleImageUpload(files){
   for(const file of files){
     if(!file.type.startsWith("image/")){ continue; }
     try{
-       const { dataUrl, width, height } = await compressImageFile(file, 1600, 0.85);
+      
+      const { dataUrl, width, height } = await compressImageFile(file, 1600, 0.85);
       const now = new Date().toISOString();
       state.images.push({
         id: uid(),
@@ -2729,9 +3171,11 @@ async function handleImageUpload(files){
       toast("Added " + added + " image" + (added===1?"":"s") + ".");
       checkAutoBackup();
     }catch(err){
-       console.error("Storage quota exceeded:", err);
+      
+      console.error("Storage quota exceeded:", err);
       toast("Storage full! Auto-downloading backup...");
       exportImagesBackup(true); 
+      
       state.images = state.images.slice(-3);
       try{ saveState(); renderImages(); }catch(e){}
       toast("Backup downloaded. Delete some images or import backup on a device with more space.");
@@ -2740,19 +3184,19 @@ async function handleImageUpload(files){
     toast("No valid images uploaded.");
   }
 }
- 
+
 function checkAutoBackup(){
   const s = state.settings;
   if(!s.imageAutoBackup) return;
   const currentCount = state.images.length;
   const lastCount = s.imageBackupLastCount || 0;
   const threshold = Math.max(1, s.imageBackupThreshold || 10);
-  // Trigger when we've added `threshold` new images since the last backup
+  
   if(currentCount - lastCount >= threshold){
     exportImagesBackup(false);
   }
 }
- 
+
 function exportImagesBackup(silent){
   try{
     const payload = {
@@ -2776,7 +3220,8 @@ function exportImagesBackup(silent){
     if(!silent) toast("Backup downloaded (" + state.images.length + " images).");
     else toast("Auto-backup: " + state.images.length + " images saved to your Downloads folder.");
 
-     if(state.settings.imageDeleteAfterBackup){
+    
+    if(state.settings.imageDeleteAfterBackup){
       setTimeout(()=>{
         confirmModal("Backup saved. Delete uploaded images to free up space?", ()=>{
           state.images = [];
@@ -2867,7 +3312,8 @@ function renderImages(){
   if(!container) return;
   container.innerHTML = "";
 
-   const statusEl = $("#image-backup-status");
+  
+  const statusEl = $("#image-backup-status");
   if(statusEl){
     const s = state.settings;
     const total = state.images.length;
@@ -2955,25 +3401,30 @@ function renderAll(){
   renderFocus();
   if($("#view-grades").classList.contains("active")) renderGrades();
 }
- 
+
 function wireEvents(){
-   $("#setup-finish").addEventListener("click", ()=>finishSetup(false));
+  
+  $("#setup-finish").addEventListener("click", ()=>finishSetup(false));
   $("#setup-skip").addEventListener("click", ()=>finishSetup(true));
 
-   $all(".nav-item").forEach(btn=> btn.addEventListener("click", ()=>switchView(btn.dataset.view)));
+  
+  $all(".nav-item").forEach(btn=> btn.addEventListener("click", ()=>switchView(btn.dataset.view)));
   $("#hamburger").addEventListener("click", openSidebarMobile);
   $("#scrim").addEventListener("click", closeSidebarMobile);
   $("#header-settings").addEventListener("click", ()=>switchView("settings"));
   $("#theme-toggle").addEventListener("click", toggleTheme);
 
-   tickClock();
+  
+  tickClock();
   setInterval(tickClock, 1000);
 
-   $("#modal-close").addEventListener("click", closeModal);
+  
+  $("#modal-close").addEventListener("click", closeModal);
   $("#modal-overlay").addEventListener("click", (e)=>{ if(e.target.id==="modal-overlay") closeModal(); });
   document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
 
-   document.addEventListener("click", (e)=>{
+  
+  document.addEventListener("click", (e)=>{
     const actionBtn = e.target.closest("[data-action]");
     if(!actionBtn) return;
     const action = actionBtn.dataset.action;
@@ -2989,28 +3440,34 @@ function wireEvents(){
     else if(action==="set-api-key") promptForApiKey().then(()=>toast("API key saved.")).catch(()=>{});
   });
 
-   $all("#task-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
+  
+  $all("#task-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
     $all("#task-filters .tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active"); taskFilter = t.dataset.filter; renderTasks();
   }));
   $("#task-search").addEventListener("input", (e)=>{ taskSearchTerm = e.target.value; renderTasks(); });
   $("#task-sort").addEventListener("change", renderTasks);
 
-   $all("#file-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
+  
+  $all("#file-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
     $all("#file-filters .tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active"); fileFilter = t.dataset.cat; renderFiles();
   }));
 
-   $("#note-search").addEventListener("input", (e)=>{ noteSearchTerm = e.target.value; renderNotes(); });
+  
+  $("#note-search").addEventListener("input", (e)=>{ noteSearchTerm = e.target.value; renderNotes(); });
 
-   $("#grades-subject-select").addEventListener("change", (e)=>renderGradePanel(e.target.value));
+  
+  $("#grades-subject-select").addEventListener("change", (e)=>renderGradePanel(e.target.value));
 
-   $all("#focus-modes .tab").forEach(t=> t.addEventListener("click", ()=>setFocusMode(t.dataset.mode)));
+  
+  $all("#focus-modes .tab").forEach(t=> t.addEventListener("click", ()=>setFocusMode(t.dataset.mode)));
   $("#timer-start").addEventListener("click", startTimer);
   $("#timer-reset").addEventListener("click", resetTimer);
   $("#timer-skip").addEventListener("click", skipTimer);
 
-   $("#global-search").addEventListener("input", (e)=>runSearch(e.target.value.trim()));
+  
+  $("#global-search").addEventListener("input", (e)=>runSearch(e.target.value.trim()));
   document.addEventListener("click", (e)=>{
     if(!e.target.closest(".topbar-search") && !e.target.closest("#search-results")){
       $("#search-results").classList.add("hidden");
@@ -3019,14 +3476,19 @@ function wireEvents(){
 
   
   $("#btn-save-settings").addEventListener("click", saveSettingsForm);
-  $("#btn-export").addEventListener("click", exportData); 
+  $("#btn-export").addEventListener("click", exportData);
+  
+  
   const btnPdf = $("#btn-export-pdf");
   if(btnPdf) btnPdf.addEventListener("click", exportDataPdf);
+  const btnSession = $("#btn-save-session");
+  if(btnSession) btnSession.addEventListener("click", saveSession);
   $("#btn-import").addEventListener("click", ()=>$("#import-file").click());
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
 
-   const btnAddImg = $("#btn-add-image");
+  
+  const btnAddImg = $("#btn-add-image");
   const imgInput  = $("#image-upload-input");
   if(btnAddImg && imgInput){
     btnAddImg.addEventListener("click", ()=>imgInput.click());
@@ -3041,7 +3503,8 @@ function wireEvents(){
     btnBackupNow.addEventListener("click", ()=>exportImagesBackup(false));
   }
 
-   const dz = $("#image-dropzone");
+  
+  const dz = $("#image-dropzone");
   if(dz){
     dz.addEventListener("click", ()=>$("#image-upload-input").click());
     ["dragenter","dragover"].forEach(evt=>
@@ -3056,7 +3519,8 @@ function wireEvents(){
     });
   }
 
-   const viewImages = $("#view-images");
+  
+  const viewImages = $("#view-images");
   if(viewImages){
     viewImages.addEventListener("dragover", (e)=>{ e.preventDefault(); if(dz) dz.classList.add("drag-over"); });
     viewImages.addEventListener("dragleave", (e)=>{ if(!viewImages.contains(e.relatedTarget) && dz) dz.classList.remove("drag-over"); });
@@ -3068,7 +3532,7 @@ function wireEvents(){
     });
   }
 }
- 
+
 function init(){
   applyAppearance();
   showSetupIfNeeded();
