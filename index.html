@@ -51,6 +51,7 @@
       <button class="nav-item" data-view="focus"><span class="nav-ico" data-ico="target"></span>Focus</button>
       <button class="nav-item" data-view="notes"><span class="nav-ico" data-ico="note"></span>Notes</button>
       <button class="nav-item" data-view="files"><span class="nav-ico" data-ico="file"></span>Files</button>
+      <button class="nav-item" data-view="images"><span class="nav-ico" data-ico="image"></span>Images</button>
       <button class="nav-item" data-view="settings"><span class="nav-ico" data-ico="gear"></span>Settings</button>
     </nav>
     <div class="sidebar-foot">
@@ -287,6 +288,23 @@
         <div class="list" id="file-list"></div>
       </section>
 
+      <!-- ===================== IMAGES ===================== -->
+      <section class="view" id="view-images">
+        <div class="view-head">
+          <div><h1>Images</h1><p class="muted">Save screenshots, photos of notes, whiteboard captures, and other images.</p></div>
+          <div class="view-head-actions">
+            <button class="btn btn-outline" id="btn-backup-images-now">Backup Now</button>
+            <button class="btn btn-primary" id="btn-add-image">Upload Image</button>
+            <input type="file" id="image-upload-input" accept="image/*" multiple class="hidden">
+          </div>
+        </div>
+        <div class="image-backup-status" id="image-backup-status"></div>
+        <div class="toolbar">
+          <input type="search" id="image-search" placeholder="Search images by title or subject..." class="input-search">
+        </div>
+        <div class="image-grid" id="image-list"></div>
+      </section>
+
       <!-- ===================== SETTINGS ===================== -->
       <section class="view" id="view-settings">
         <div class="view-head">
@@ -379,6 +397,19 @@
             <div class="card-body">
               <p class="muted small">Choose which widgets appear on your dashboard.</p>
               <div class="widget-toggles" id="widget-toggles"></div>
+            </div>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head"><h3>Image Auto-Backup</h3></div>
+            <div class="card-body">
+              <p class="muted small">Automatically download a backup of your images when you reach a threshold, so nothing gets lost if browser storage fills up.</p>
+              <label class="checkline"><input type="checkbox" id="s-imageautobackup"> Enable auto-backup</label>
+              <div class="form-row">
+                <label>Backup every</label>
+                <input type="number" id="s-imagebackupthreshold" min="1" max="100" style="width:80px;"> images
+              </div>
+              <label class="checkline"><input type="checkbox" id="s-imagedeleteafterbackup"> Ask to delete images after each backup (free up space)</label>
             </div>
           </div>
 
