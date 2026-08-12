@@ -7,300 +7,39 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- ============ LANDING PAGE ============ -->
+  
 <div id="landing-page" class="landing hidden">
 
-  <!-- NAV -->
+
+
   <nav class="lp-nav">
     <div class="lp-logo">mySchedule</div>
     <div class="lp-nav-links">
       <a href="#lp-features" class="lp-link">Features</a>
       <a href="#lp-demo" class="lp-link">Demo</a>
       <a href="#lp-faq" class="lp-link">FAQ</a>
-      <button class="btn btn-primary lp-cta-nav" id="lp-cta-nav">Get Started</button>
+      <button class="btn btn-primary lp-cta" id="lp-cta-nav">Get Started</button>
     </div>
   </nav>
-
-  <!-- HERO -->
-  <section class="lp-hero" id="lp-hero">
-    <div class="lp-hero-content">
-      <div class="lp-badge">Free &bull; No account needed &bull; Works offline</div>
-      <h1 class="lp-headline">Your student life,<br><span class="lp-accent">organized.</span></h1>
-      <p class="lp-sub">mySchedule is a complete student dashboard — schedule, tasks, grades, notes, and images. Everything lives on your device, nothing on a server.</p>
-      <div class="lp-hero-btns">
-        <button class="btn btn-primary lp-cta-main" id="lp-cta-main">Get Started — It's Free</button>
-        <a href="#lp-demo" class="btn btn-outline lp-see-demo">See how it works ↓</a>
-      </div>
-      <div class="lp-hero-tags">
-        <span class="lp-tag">📅 Schedule</span>
-        <span class="lp-tag">✅ Tasks</span>
-        <span class="lp-tag">📊 Grades</span>
-        <span class="lp-tag">📝 Notes</span>
-        <span class="lp-tag">🖼️ Images</span>
-        <span class="lp-tag">🎯 Focus Timer</span>
-      </div>
-    </div>
-    <div class="lp-hero-visual">
-      <div class="lp-mockup">
-        <div class="lp-mock-bar"><span></span><span></span><span></span></div>
-        <div class="lp-mock-body">
-          <div class="lp-mock-side">
-            <div class="lp-mock-nav-item active">Dashboard</div>
-            <div class="lp-mock-nav-item">Schedule</div>
-            <div class="lp-mock-nav-item">Assignments</div>
-            <div class="lp-mock-nav-item">Grades</div>
-            <div class="lp-mock-nav-item">Notes</div>
-          </div>
-          <div class="lp-mock-main">
-            <div class="lp-mock-greeting">Good morning, Neil 👋</div>
-            <div class="lp-mock-card">
-              <div class="lp-mock-label">NEXT CLASS</div>
-              <div class="lp-mock-title">Mathematics in the Modern World</div>
-              <div class="lp-mock-meta">Wednesday &bull; 06:00–07:30 &bull; B1.24</div>
-              <div class="lp-mock-badge">in 2h 15m</div>
-            </div>
-            <div class="lp-mock-card lp-mock-card-sm">
-              <div class="lp-mock-label">TODAY'S TASKS</div>
-              <div class="lp-mock-task">✅ OLENG01 — Essay Draft</div>
-              <div class="lp-mock-task lp-pending">⬜ OLMATH01 — Problem Set 3</div>
-              <div class="lp-mock-task lp-pending">⬜ OLFIL-01 — Reading</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FEATURES -->
-  <section class="lp-section" id="lp-features">
-    <div class="lp-section-inner">
-      <div class="lp-section-label">Features</div>
-      <h2 class="lp-section-title">Everything a student needs</h2>
-      <p class="lp-section-sub">Built specifically for Filipino college students — works with ICCT COR, works offline, free forever.</p>
-      <div class="lp-features-grid">
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">📅</div>
-          <h3>Smart Schedule Import</h3>
-          <p>Upload your COR PDF or screenshot — the app extracts all classes automatically. Understands ICCT day codes like WSa, MTh, MWF.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">✅</div>
-          <h3>Task & Assignment Tracker</h3>
-          <p>Never miss a deadline. Track assignments per subject with due dates, priorities, and status. Sorted automatically by urgency.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">📊</div>
-          <h3>Grade Calculator</h3>
-          <p>Set up grade categories with weights (quizzes, exams, activities). See your running average per subject in real time.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">📝</div>
-          <h3>Notes</h3>
-          <p>Jot down class notes, reminders, or anything else. Pin important ones to the top. Search across all notes instantly.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">🖼️</div>
-          <h3>Image Storage</h3>
-          <p>Save screenshots of lessons, whiteboard photos, or receipts. Drag & drop to upload. Auto-backup to JSON when storage fills up.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">🎯</div>
-          <h3>Focus Timer</h3>
-          <p>Built-in Pomodoro timer to help you study in focused intervals. Tracks your sessions and total study time automatically.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">🤖</div>
-          <h3>AI Image Analysis</h3>
-          <p>Connect a free API key (Gemini, Groq, OpenRouter) to scan schedule photos, extract grades from images, and detect subjects from enrollment forms.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">💾</div>
-          <h3>Session Saving</h3>
-          <p>End-of-term? Export everything as a PDF, then clear tasks, notes, and grades for a fresh start — while keeping your schedule and subjects.</p>
-        </div>
-        <div class="lp-feat-card">
-          <div class="lp-feat-icon">📱</div>
-          <h3>Mobile-First & Offline</h3>
-          <p>Works on any device — phone, tablet, laptop. No internet needed after loading. All data stays in your browser, nothing goes to a server.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- DEMO WALKTHROUGH -->
-  <section class="lp-section lp-demo-section" id="lp-demo">
-    <div class="lp-section-inner">
-      <div class="lp-section-label">Demo</div>
-      <h2 class="lp-section-title">See every part of the app</h2>
-      <p class="lp-section-sub">Click through the tabs below to see exactly what each section looks like.</p>
-
-      <div class="lp-demo-wrap">
-        <div class="lp-demo-tabs">
-          <button class="lp-demo-tab active" data-demo="dashboard">Dashboard</button>
-          <button class="lp-demo-tab" data-demo="schedule">Schedule</button>
-          <button class="lp-demo-tab" data-demo="tasks">Tasks</button>
-          <button class="lp-demo-tab" data-demo="grades">Grades</button>
-          <button class="lp-demo-tab" data-demo="notes">Notes</button>
-          <button class="lp-demo-tab" data-demo="focus">Focus</button>
-          <button class="lp-demo-tab" data-demo="images">Images</button>
-          <button class="lp-demo-tab" data-demo="import">Import</button>
-        </div>
-        <div class="lp-demo-stage" id="lp-demo-stage">
-          <!-- Filled by JS -->
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- WHY -->
-  <section class="lp-section lp-why-section">
-    <div class="lp-section-inner">
-      <div class="lp-section-label">Why mySchedule</div>
-      <h2 class="lp-section-title">Built for students, by a student</h2>
-      <div class="lp-why-grid">
-        <div class="lp-why-item"><span class="lp-why-icon">🔒</span><div><strong>Private by default</strong><p>Your data never leaves your device. No accounts, no servers, no tracking.</p></div></div>
-        <div class="lp-why-item"><span class="lp-why-icon">⚡</span><div><strong>Fast & lightweight</strong><p>Loads instantly, works offline, runs smoothly even on low-end phones.</p></div></div>
-        <div class="lp-why-item"><span class="lp-why-icon">🆓</span><div><strong>100% free</strong><p>No subscriptions, no premium tier, no ads. Everything is free forever.</p></div></div>
-        <div class="lp-why-item"><span class="lp-why-icon">🇵🇭</span><div><strong>Made for PH students</strong><p>Understands ICCT COR format, WSa/MTh day codes, and Filipino semester structure.</p></div></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FAQ -->
-  <section class="lp-section" id="lp-faq">
-    <div class="lp-section-inner lp-faq-inner">
-      <div class="lp-section-label">FAQ</div>
-      <h2 class="lp-section-title">Frequently Asked Questions</h2>
-
-      <!-- TOP 3 — highlighted -->
-      <div class="lp-faq-featured">
-        <div class="lp-faq-item lp-faq-top">
-          <button class="lp-faq-q">
-            <span>Do I need to make an account?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">No account needed, ever. The app runs entirely in your browser. Your data is saved to your device's local storage — nothing is sent online.</div>
-        </div>
-        <div class="lp-faq-item lp-faq-top">
-          <button class="lp-faq-q">
-            <span>Can I use it without an AI API key?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Yes — the full app works without any API key. You can import your COR schedule from PDF without AI. The API key only unlocks extra features like scanning schedule photos, extracting grades from images, and analyzing enrollment forms.</div>
-        </div>
-        <div class="lp-faq-item lp-faq-top">
-          <button class="lp-faq-q">
-            <span>Will my data be lost if I clear my browser?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Yes — clearing browser data (cache/cookies) will delete your app data. To protect your data: go to Settings → Export Backup (JSON) regularly, and save the file somewhere safe like Google Drive. You can restore it anytime via Import Backup.</div>
-        </div>
-      </div>
-
-      <!-- Remaining 7 -->
-      <div class="lp-faq-list">
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>Which AI providers are free?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Google Gemini (aistudio.google.com), Groq (console.groq.com), OpenRouter (openrouter.ai), Mistral, Cohere, and HuggingFace all offer free tiers with no credit card required. Gemini 2.0 Flash is recommended for best accuracy on COR PDFs.</div>
-        </div>
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>Can I use it on my phone?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Yes — the app is fully responsive and designed mobile-first. You can add it to your home screen from Chrome (tap the menu → "Add to Home Screen") for an app-like experience.</div>
-        </div>
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>How do I transfer my data to a new phone?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Go to Settings → Export Backup (JSON) on your old device. Send the file to your new device (email, Drive, etc.). On the new device, open the app → Settings → Import Backup (JSON) → select the file. All your data will be restored.</div>
-        </div>
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>Does the schedule import work for all schools?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">The PDF text parser is optimized for ICCT Colleges COR format. For other schools, using an AI API key (Gemini, etc.) will give much better results since AI can understand any schedule format from a photo or PDF.</div>
-        </div>
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>What happens at the end of the semester?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Use "Save Session" in Settings — it exports a PDF of all your tasks, notes, grades, and images, then clears those from the app. Your schedule and subjects stay, so you can just update them for the new term.</div>
-        </div>
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>Is my API key safe?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Your API key is stored only in your browser's localStorage. It is sent directly to the AI provider's API (Google, Groq, etc.) — never to any mySchedule server. You can delete it anytime from the API Key modal.</div>
-        </div>
-        <div class="lp-faq-item">
-          <button class="lp-faq-q">
-            <span>Can multiple people use it on the same device?</span>
-            <span class="lp-faq-arrow">▼</span>
-          </button>
-          <div class="lp-faq-a">Currently the app stores one set of data per browser. If you want separate profiles, use different browser profiles (Chrome supports multiple profiles). A multi-user feature may be added in the future.</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA BOTTOM -->
-  <section class="lp-cta-section">
-    <div class="lp-section-inner lp-cta-inner">
-      <h2 class="lp-cta-title">Ready to get organized?</h2>
-      <p class="lp-cta-body">Takes 30 seconds to set up. No account, no download, no cost.</p>
-      <button class="btn btn-primary lp-cta-big" id="lp-cta-bottom">Open mySchedule →</button>
-    </div>
-  </section>
-
-  <!-- FOOTER -->
-  <footer class="lp-footer">
-    <div class="lp-footer-inner">
-      <span class="lp-logo">mySchedule</span>
-      <span class="lp-footer-copy">Free &bull; Private &bull; Made for students</span>
-    </div>
-  </footer>
-
-</div>
-
-<!-- ============ LANDING PAGE ============ -->
-<div id="landing-page" class="landing hidden">
-  <nav class="lp-nav">
-    <div class="lp-logo">mySchedule</div>
-    <div class="lp-nav-links">
-      <a href="#lp-features" class="lp-link">Features</a>
-      <a href="#lp-demo" class="lp-link">Demo</a>
-      <a href="#lp-faq" class="lp-link">FAQ</a>
-      <button class="btn btn-primary" id="lp-cta-nav">Get Started</button>
-    </div>
-  </nav>
-
-  <!-- HERO -->
+  
+  
   <section class="lp-hero">
     <div class="lp-hero-content">
-      <div class="lp-badge">Free &bull; No account needed &bull; Works offline</div>
+      <div class="lp-badge">Free &bull; No account &bull; Works offline</div>
       <h1 class="lp-headline">Your student life,<br><span class="lp-accent">organized.</span></h1>
-      <p class="lp-sub">mySchedule is a complete student dashboard — schedule, tasks, grades, notes, and images. Everything lives on your device, nothing on a server.</p>
+      <p class="lp-sub">A complete student dashboard — schedule, tasks, grades, notes, and images. Everything on your device, nothing on a server.</p>
       <div class="lp-hero-btns">
-        <button class="btn btn-primary lp-cta-big" id="lp-cta-main">Get Started — It's Free</button>
-        <a href="#lp-demo" class="btn btn-outline">See how it works ↓</a>
+        <button class="btn btn-primary lp-cta" id="lp-cta-main">Get Started Free</button>
+        <a href="#lp-demo" class="btn btn-outline lp-scroll-link">See Demo</a>
       </div>
       <div class="lp-hero-tags">
-        <span class="lp-tag">📅 Schedule</span>
-        <span class="lp-tag">✅ Tasks</span>
-        <span class="lp-tag">📊 Grades</span>
-        <span class="lp-tag">📝 Notes</span>
-        <span class="lp-tag">🖼️ Images</span>
-        <span class="lp-tag">🎯 Focus Timer</span>
+        <span class="lp-tag">Schedule</span>
+        <span class="lp-tag">Tasks</span>
+        <span class="lp-tag">Grades</span>
+        <span class="lp-tag">Notes</span>
+        <span class="lp-tag">Images</span>
+        <span class="lp-tag">Focus Timer</span>
+        <span class="lp-tag">AI Import</span>
       </div>
     </div>
     <div class="lp-hero-visual">
@@ -315,18 +54,18 @@
             <div class="lp-mock-nav-item">Notes</div>
           </div>
           <div class="lp-mock-main">
-            <div class="lp-mock-greeting">Good morning, Neil 👋</div>
+            <div class="lp-mock-greeting">Good morning, Neil</div>
             <div class="lp-mock-card">
               <div class="lp-mock-label">NEXT CLASS</div>
               <div class="lp-mock-title">Mathematics in the Modern World</div>
-              <div class="lp-mock-meta">Wednesday &bull; 06:00–07:30 &bull; B1.24</div>
+              <div class="lp-mock-meta">Wednesday &bull; 06:00&ndash;07:30 &bull; B1.24</div>
               <div class="lp-mock-badge">in 2h 15m</div>
             </div>
-            <div class="lp-mock-card lp-mock-card-sm">
+            <div class="lp-mock-card">
               <div class="lp-mock-label">TODAY'S TASKS</div>
-              <div class="lp-mock-task done">✅ OLENG01 — Essay Draft</div>
-              <div class="lp-mock-task">⬜ OLMATH01 — Problem Set 3</div>
-              <div class="lp-mock-task">⬜ OLFIL-01 — Reading</div>
+              <div class="lp-mock-task lp-mock-done">Essay Draft &mdash; done</div>
+              <div class="lp-mock-task">Problem Set 3 &mdash; pending</div>
+              <div class="lp-mock-task">Reading &mdash; pending</div>
             </div>
           </div>
         </div>
@@ -334,32 +73,32 @@
     </div>
   </section>
 
-  <!-- FEATURES -->
+  
   <section class="lp-section" id="lp-features">
     <div class="lp-section-inner">
-      <div class="lp-section-label">Features</div>
+      <div class="lp-label">Features</div>
       <h2 class="lp-section-title">Everything a student needs</h2>
-      <p class="lp-section-sub">Built for Filipino college students — works with ICCT COR, works offline, free forever.</p>
+      <p class="lp-section-sub">Built for Filipino college students. Works with ICCT COR. Free forever.</p>
       <div class="lp-features-grid">
-        <div class="lp-feat-card"><div class="lp-feat-icon">📅</div><h3>Smart Schedule Import</h3><p>Upload your COR PDF or screenshot — the app extracts all classes automatically. Understands ICCT day codes like WSa, MTh, MWF.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">✅</div><h3>Task &amp; Assignment Tracker</h3><p>Never miss a deadline. Track assignments per subject with due dates, priorities, and status. Sorted automatically by urgency.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">📊</div><h3>Grade Calculator</h3><p>Set up grade categories with weights. See your running average per subject in real time.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">📝</div><h3>Notes</h3><p>Jot down class notes, reminders, or anything else. Pin important ones. Search across all notes instantly.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">🖼️</div><h3>Image Storage</h3><p>Save screenshots of lessons, whiteboard photos, or receipts. Drag &amp; drop to upload. Auto-backup before storage fills.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">🎯</div><h3>Focus Timer</h3><p>Built-in Pomodoro timer for focused study intervals. Tracks sessions and total study time automatically.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">🤖</div><h3>AI Image Analysis</h3><p>Connect a free API key (Gemini, Groq, OpenRouter) to scan schedule photos, extract grades from images, and detect subjects from forms.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">💾</div><h3>Session Saving</h3><p>End-of-term: export everything as PDF, clear the semester's data, get a fresh start — while keeping your schedule and subjects.</p></div>
-        <div class="lp-feat-card"><div class="lp-feat-icon">📱</div><h3>Mobile-First &amp; Offline</h3><p>Works on any device. No internet needed after loading. All data stays in your browser.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">S</div><h3>Smart Schedule Import</h3><p>Upload your COR PDF or screenshot and the app reads all classes automatically. Understands ICCT day codes like WSa, MTh, MWF.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">T</div><h3>Task Tracker</h3><p>Track assignments per subject with due dates, priorities, and status. Sorted automatically by urgency.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">G</div><h3>Grade Calculator</h3><p>Set up weighted grade categories per subject. See your running average in real time.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">N</div><h3>Notes</h3><p>Write and organize class notes. Pin important ones. Search across everything instantly.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">I</div><h3>Image Storage</h3><p>Save screenshots of lessons, whiteboard photos. Drag and drop to upload. Auto-backup before storage fills.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">F</div><h3>Focus Timer</h3><p>Built-in Pomodoro timer. Study in focused intervals, track total study time automatically.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">AI</div><h3>AI Image Analysis</h3><p>Connect a free API key (Gemini, Groq, OpenRouter) to scan schedule photos, extract grades from images.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">SS</div><h3>Session Saving</h3><p>End-of-term: export everything as PDF, clear the semester data, get a fresh start. Schedule stays.</p></div>
+        <div class="lp-feat-card"><div class="lp-feat-icon-box">M</div><h3>Mobile-First</h3><p>Works on any device. No internet needed after loading. All data stays in your browser.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- DEMO -->
-  <section class="lp-section lp-demo-section" id="lp-demo">
+  
+  <section class="lp-section lp-alt-section" id="lp-demo">
     <div class="lp-section-inner">
-      <div class="lp-section-label">Demo</div>
+      <div class="lp-label">Demo</div>
       <h2 class="lp-section-title">See every part of the app</h2>
-      <p class="lp-section-sub">Click a tab to preview what each section looks like.</p>
+      <p class="lp-section-sub">Click a tab below to preview what each section looks like.</p>
       <div class="lp-demo-wrap">
         <div class="lp-demo-tabs" id="lp-demo-tabs">
           <button class="lp-demo-tab active" data-demo="dashboard">Dashboard</button>
@@ -376,48 +115,48 @@
     </div>
   </section>
 
-  <!-- WHY -->
-  <section class="lp-section lp-why-section">
+  
+  <section class="lp-section">
     <div class="lp-section-inner">
-      <div class="lp-section-label">Why mySchedule</div>
+      <div class="lp-label">Why mySchedule</div>
       <h2 class="lp-section-title">Built for students, by a student</h2>
       <div class="lp-why-grid">
-        <div class="lp-why-item"><span class="lp-why-icon">🔒</span><div><strong>Private by default</strong><p>Your data never leaves your device. No accounts, no servers, no tracking.</p></div></div>
-        <div class="lp-why-item"><span class="lp-why-icon">⚡</span><div><strong>Fast &amp; lightweight</strong><p>Loads instantly, works offline, runs smoothly even on low-end phones.</p></div></div>
-        <div class="lp-why-item"><span class="lp-why-icon">🆓</span><div><strong>100% free</strong><p>No subscriptions, no premium tier, no ads. Free forever.</p></div></div>
-        <div class="lp-why-item"><span class="lp-why-icon">🇵🇭</span><div><strong>Made for PH students</strong><p>Understands ICCT COR format, WSa/MTh day codes, and Filipino semester structure.</p></div></div>
+        <div class="lp-why-item"><div class="lp-why-icon-box">P</div><div><strong>Private by default</strong><p>Your data never leaves your device. No accounts, no servers, no tracking.</p></div></div>
+        <div class="lp-why-item"><div class="lp-why-icon-box">F</div><div><strong>Fast and lightweight</strong><p>Loads instantly, works offline, runs smoothly even on low-end phones.</p></div></div>
+        <div class="lp-why-item"><div class="lp-why-icon-box">0</div><div><strong>100% free</strong><p>No subscriptions, no premium tier, no ads. Free forever.</p></div></div>
+        <div class="lp-why-item"><div class="lp-why-icon-box">PH</div><div><strong>Made for PH students</strong><p>Understands ICCT COR format, WSa/MTh day codes, and Filipino semester structure.</p></div></div>
       </div>
     </div>
   </section>
 
-  <!-- FAQ -->
-  <section class="lp-section" id="lp-faq">
+  
+  <section class="lp-section lp-alt-section" id="lp-faq">
     <div class="lp-section-inner lp-faq-inner">
-      <div class="lp-section-label">FAQ</div>
+      <div class="lp-label">FAQ</div>
       <h2 class="lp-section-title">Frequently Asked Questions</h2>
       <div class="lp-faq-featured">
-        <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Do I need to make an account?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">No account needed, ever. The app runs entirely in your browser. Your data is saved to your device's local storage — nothing is sent online.</div></div>
-        <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Can I use it without an AI API key?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Yes — the full app works without any API key. You can import your COR schedule from PDF without AI. The API key only unlocks extra features like scanning schedule photos, extracting grades from images, and analyzing enrollment forms.</div></div>
-        <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Will my data be lost if I clear my browser?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Yes — clearing browser data will delete your app data. To protect it: Settings → Export Backup (JSON) regularly, save to Google Drive. Restore anytime via Import Backup.</div></div>
+        <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Do I need to create an account?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">No account needed, ever. The app runs entirely in your browser. Your data is saved to your device only — nothing is sent online.</div></div>
+        <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Can I use it without an AI API key?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Yes. The full app works without any API key. You can import your COR schedule from PDF without AI. The API key only unlocks scanning photos and extracting grades from images.</div></div>
+        <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Will my data be lost if I clear my browser?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Yes — clearing browser data deletes app data. Protect it by going to Settings &rarr; Export Backup (JSON) regularly and saving the file to Google Drive. Restore anytime via Import Backup.</div></div>
       </div>
       <div class="lp-faq-list">
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>Which AI providers are free?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Google Gemini, Groq, OpenRouter, Mistral, Cohere, and HuggingFace all offer free tiers. Gemini 2.0 Flash is recommended for best accuracy on COR PDFs.</div></div>
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>Can I use it on my phone?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Yes — fully responsive, mobile-first. Add to home screen from Chrome: tap menu → "Add to Home Screen" for an app-like experience.</div></div>
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>How do I transfer data to a new phone?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Settings → Export Backup (JSON) → send file to new device → Import Backup (JSON) on new device. All data restored.</div></div>
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>Does schedule import work for all schools?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Optimized for ICCT Colleges COR format. For other schools, use an AI API key for best results since AI understands any format.</div></div>
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>What happens at end of semester?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Settings → Save Session: exports PDF of all tasks, notes, grades, images, then clears them. Schedule and subjects stay for next term.</div></div>
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>Is my API key safe?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Stored only in your browser's localStorage. Sent directly to the AI provider — never to any mySchedule server. Delete anytime from the API Key modal.</div></div>
-        <div class="lp-faq-item"><button class="lp-faq-q"><span>Can multiple people use it on the same device?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Use different browser profiles (Chrome supports multiple profiles) for separate data sets per user.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>Which AI providers are free?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Google Gemini, Groq, OpenRouter, Mistral, Cohere, and HuggingFace all offer free tiers. Gemini 2.0 Flash is recommended for best accuracy on COR PDFs.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>Can I use it on my phone?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Yes, fully responsive and mobile-first. Add to home screen from Chrome: tap the menu then "Add to Home Screen" for an app-like experience.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>How do I transfer data to a new phone?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Settings &rarr; Export Backup (JSON) on old device. Send file to new device. On new device: Import Backup (JSON) &rarr; select file. All data restored.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>Does schedule import work for all schools?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">The PDF parser is optimized for ICCT Colleges COR format. For other schools, using a free AI API key will give much better results since AI understands any format.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>What do I do at the end of semester?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Use Save Session in Settings. It exports a PDF of all tasks, notes, grades, and images then clears them. Your schedule and subjects stay for the next term.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>Is my API key safe?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Your key is stored in your browser only. It goes directly to the AI provider (Google, Groq, etc.) — never to any mySchedule server. Delete it anytime from the API Key modal.</div></div>
+        <div class="lp-faq-item"><button class="lp-faq-q"><span>Can multiple people use it on the same device?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Use different browser profiles for separate data. Chrome supports multiple profiles natively.</div></div>
       </div>
     </div>
   </section>
 
-  <!-- CTA -->
+  
   <section class="lp-cta-section">
     <div class="lp-section-inner lp-cta-inner">
       <h2 class="lp-cta-title">Ready to get organized?</h2>
       <p class="lp-cta-body">Takes 30 seconds to set up. No account, no download, no cost.</p>
-      <button class="btn btn-primary lp-cta-big" id="lp-cta-bottom">Open mySchedule →</button>
+      <button class="btn btn-primary lp-cta lp-cta-bottom-btn" id="lp-cta-bottom">Open mySchedule</button>
     </div>
   </section>
 
@@ -427,6 +166,7 @@
       <span class="lp-footer-copy">Free &bull; Private &bull; Made for students</span>
     </div>
   </footer>
+
 </div>
 
 <div id="setup-screen" class="setup-screen hidden">
@@ -437,7 +177,7 @@
 
     <div class="setup-step" data-step="1">
       <label>Your name</label>
-      <input type="text" id="setup-name" placeholder="e.g. Neil Steve" autocomplete="off">
+      <input type="text" id="setup-name" placeholder="e.g. neilsunday" autocomplete="off">
       <label>School</label>
       <input type="text" id="setup-school" placeholder="e.g. State University" autocomplete="off">
       <label>Program</label>
@@ -850,55 +590,46 @@
           <div class="about-section">
             <h2>What you get</h2>
             <div class="about-benefits">
-              <div class="about-benefit"><span class="about-benefit-icon">📅</span><div><strong>Schedule at a glance</strong><p>See your full weekly class schedule, upcoming classes, and time until next class — all on your dashboard.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">✅</span><div><strong>Never miss a deadline</strong><p>Track all assignments and tasks per subject with due dates, priorities, and status. Auto-sorted by urgency.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">📊</span><div><strong>Know your grade</strong><p>Set up weighted grade categories per subject. The app computes your running average and shows if you're hitting your target.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">📝</span><div><strong>Keep your notes</strong><p>Write and organize class notes, to-dos, or reminders. Pin the important ones, search instantly.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">🖼️</span><div><strong>Save your screenshots</strong><p>Store lesson screenshots, whiteboard photos, receipts. Drag &amp; drop to upload. Auto-backup before storage fills up.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">🎯</span><div><strong>Study smarter</strong><p>Built-in Pomodoro focus timer tracks your study sessions and total minutes focused per day.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">🤖</span><div><strong>AI-powered import</strong><p>Connect a free Gemini or Groq key to scan schedule photos, extract grades from images, or read enrollment forms automatically.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">💾</span><div><strong>Session saving</strong><p>End-of-term: export everything as PDF, clear the semester's data, start fresh. Schedule and subjects stay.</p></div></div>
-              <div class="about-benefit"><span class="about-benefit-icon">🔒</span><div><strong>100% private</strong><p>Everything is saved on your device only. No accounts, no servers, no ads, no tracking. Your data is yours.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">S</div><div><strong>Schedule at a glance</strong><p>See your full weekly class schedule, upcoming classes, and time until next class on your dashboard.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">T</div><div><strong>Never miss a deadline</strong><p>Track all assignments per subject with due dates, priorities, and status. Auto-sorted by urgency.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">G</div><div><strong>Know your grade</strong><p>Set up weighted grade categories per subject. The app computes your running average and shows if you are hitting your target.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">N</div><div><strong>Keep your notes</strong><p>Write and organize class notes, to-dos, or reminders. Pin the important ones, search instantly.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">I</div><div><strong>Save your screenshots</strong><p>Store lesson screenshots, whiteboard photos, receipts. Drag and drop to upload. Auto-backup before storage fills up.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">F</div><div><strong>Study smarter</strong><p>Built-in Pomodoro focus timer tracks your study sessions and total minutes focused.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">AI</div><div><strong>AI-powered import</strong><p>Connect a free Gemini or Groq key to scan schedule photos, extract grades from images, or read enrollment forms.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">SS</div><div><strong>Session saving</strong><p>End-of-term: export everything as PDF, clear the semester data, start fresh. Schedule and subjects stay.</p></div></div>
+              <div class="about-benefit"><div class="about-benefit-icon">P</div><div><strong>100% private</strong><p>Everything is saved on your device only. No accounts, no servers, no ads, no tracking.</p></div></div>
             </div>
           </div>
 
           <div class="about-section">
             <h2>Frequently Asked Questions</h2>
-            <p class="small muted" style="margin-bottom:14px;">Most important — tap to expand:</p>
+            <p class="small muted" style="margin-bottom:14px;">Most important &mdash; tap to expand:</p>
             <div class="about-faq-featured">
-              <div class="lp-faq-item lp-faq-top">
-                <button class="lp-faq-q"><span>Do I need to make an account?</span><span class="lp-faq-arrow">▼</span></button>
-                <div class="lp-faq-a">No account needed, ever. The app runs entirely in your browser. Your data is saved to your device's local storage — nothing is sent online.</div>
-              </div>
-              <div class="lp-faq-item lp-faq-top">
-                <button class="lp-faq-q"><span>Can I use it without an AI API key?</span><span class="lp-faq-arrow">▼</span></button>
-                <div class="lp-faq-a">Yes — the full app works without any API key. You can import your COR schedule from PDF without AI. The API key only unlocks extra features like scanning photos and extracting grades from images.</div>
-              </div>
-              <div class="lp-faq-item lp-faq-top">
-                <button class="lp-faq-q"><span>Will my data be lost if I clear my browser?</span><span class="lp-faq-arrow">▼</span></button>
-                <div class="lp-faq-a">Yes — clearing browser data will delete your app data. Protect it by going to Settings → Export Backup (JSON) regularly, and saving the file to Google Drive. Restore anytime via Import Backup.</div>
-              </div>
+              <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Do I need to create an account?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">No account needed, ever. The app runs entirely in your browser. Your data is saved to your device only.</div></div>
+              <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Can I use it without an AI API key?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Yes. The full app works without any API key. You can import your COR schedule from PDF without AI. The API key only unlocks scanning photos and extracting grades from images.</div></div>
+              <div class="lp-faq-item lp-faq-top"><button class="lp-faq-q"><span>Will my data be lost if I clear my browser?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Yes. Protect it by going to Settings &rarr; Export Backup (JSON) regularly and saving to Google Drive. Restore anytime via Import Backup.</div></div>
             </div>
             <p class="small muted" style="margin:16px 0 10px;">More questions:</p>
             <div class="lp-faq-list">
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>Which AI providers are free?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Google Gemini, Groq, OpenRouter, Mistral, Cohere, and HuggingFace all offer free tiers. Gemini 2.0 Flash is recommended for best accuracy on COR PDFs.</div></div>
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>Can I use it on my phone?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Yes — fully responsive, mobile-first. Add to home screen from Chrome: tap menu → "Add to Home Screen" for an app-like experience.</div></div>
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>How do I transfer data to a new phone?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Settings → Export Backup (JSON) → send file to new device → Import Backup (JSON) on new device. All data restored.</div></div>
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>Does schedule import work for all schools?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Optimized for ICCT Colleges COR format. For other schools, use an AI API key for best results since AI understands any format.</div></div>
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>What happens at end of semester?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Settings → Save Session: exports PDF of tasks, notes, grades, images, then clears them. Schedule and subjects stay for the next term.</div></div>
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>Is my API key safe?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Stored only in your browser's localStorage. Sent directly to the AI provider — never to any mySchedule server. Delete anytime from the API Key modal.</div></div>
-              <div class="lp-faq-item"><button class="lp-faq-q"><span>Can multiple people use it on the same device?</span><span class="lp-faq-arrow">▼</span></button><div class="lp-faq-a">Use different browser profiles (Chrome supports multiple profiles) for separate data sets per user.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>Which AI providers are free?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Google Gemini, Groq, OpenRouter, Mistral, Cohere, and HuggingFace all offer free tiers. Gemini 2.0 Flash is recommended.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>Can I use it on my phone?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Yes, fully responsive and mobile-first. Add to home screen from Chrome for an app-like experience.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>How do I transfer data to a new phone?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Export Backup (JSON) on old device &rarr; send file &rarr; Import Backup (JSON) on new device. Done.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>Does schedule import work for all schools?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Optimized for ICCT Colleges COR format. For other schools, use a free AI API key for best results.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>What do I do at end of semester?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Settings &rarr; Save Session: exports PDF of tasks, notes, grades, images, then clears them. Schedule and subjects stay for next term.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>Is my API key safe?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Stored only in your browser. Goes directly to the AI provider, never to any mySchedule server. Delete anytime.</div></div>
+              <div class="lp-faq-item"><button class="lp-faq-q"><span>Can multiple people use it on the same device?</span><span class="lp-faq-arrow">+</span></button><div class="lp-faq-a">Use different browser profiles for separate data sets. Chrome supports multiple profiles natively.</div></div>
             </div>
           </div>
 
           <div class="about-cta">
             <button class="btn btn-outline" id="about-show-landing">View Landing Page</button>
-            <button class="btn btn-outline" onclick="document.querySelector('[data-view=settings]').click()">⚙️ Settings</button>
+            <button class="btn btn-outline" onclick="document.querySelector('[data-view=settings]').click()">Settings</button>
           </div>
         </div>
       </section>
 
-      
+
       <section class="view" id="view-settings">
         <div class="view-head">
           <div><h1>Settings</h1><p class="muted">Customize your profile and how the app behaves.</p></div>
@@ -994,28 +725,12 @@
           </div>
 
           <div class="card span-2">
-            <div class="card-head"><h3>Image Auto-Backup</h3></div>
-            <div class="card-body">
-              <p class="muted small">Automatically download a backup of your images when you reach a threshold, so nothing gets lost if browser storage fills up.</p>
-              <label class="checkline"><input type="checkbox" id="s-imageautobackup"> Enable auto-backup</label>
-              <div class="form-row">
-                <label>Backup every</label>
-                <input type="number" id="s-imagebackupthreshold" min="1" max="100" style="width:80px;"> images
-              </div>
-              <label class="checkline"><input type="checkbox" id="s-imagedeleteafterbackup"> Ask to delete images after each backup (free up space)</label>
-            </div>
-          </div>
-
-          <div class="card span-2">
             <div class="card-head"><h3>Data Management</h3></div>
             <div class="card-body">
-              <p class="muted small">Everything is stored locally in your browser. Export a full backup (JSON) to transfer to another device, or print your info as PDF.</p>
+              <p class="muted small">Everything is stored locally in your browser. Export a backup or restore from one.</p>
               <div class="quick-actions">
-                <button class="btn btn-primary" id="btn-save-session">Save Session (PDF + Clear)</button>
-                <button class="btn btn-outline" id="btn-export">Export Backup (JSON)</button>
-                <button class="btn btn-outline" id="btn-import">Import Backup (JSON)</button>
-                <button class="btn btn-outline" id="btn-export-pdf">Export as PDF</button>
-                <button class="btn btn-outline" data-action="import-image">Import from Image / PDF</button>
+                <button class="btn btn-outline" id="btn-export">Export Data</button>
+                <button class="btn btn-outline" id="btn-import">Import Data</button>
                 <button class="btn btn-danger" id="btn-reset">Reset Data</button>
                 <input type="file" id="import-file" accept="application/json" class="hidden">
               </div>
@@ -1033,6 +748,7 @@
   </div>
 </div>
 
+
 <div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal" id="modal-box" role="dialog" aria-modal="true">
     <div class="modal-head">
@@ -1045,7 +761,10 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+</div>
+</div>
+
+</div>
 
 <script src="script.js"></script>
 </body>
