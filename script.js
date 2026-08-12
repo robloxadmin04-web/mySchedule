@@ -1427,12 +1427,36 @@ function importData(file){
   reader.readAsText(file);
 }
 function resetData(){
-  confirmModal("This will permanently delete all your data. Continue?", ()=>{
-    state = defaultState();
-    saveState();
-    applyAppearance();
-    location.reload();
-  });
+  // Build modal with optional download before reset
+  const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
+                  state.notes.length || state.images.length || state.files.length;
+
+  const body = el("div", {}, [
+    el("p", {}, ["This will permanently delete all your data. This cannot be undone."]),
+    hasData ? el("div", {class:"reset-options"}, [
+      el("button", {
+        class:"btn btn-outline",
+        style:"width:100%;margin-bottom:8px;",
+        onclick: ()=>{
+          exportData();
+          toast("Backup downloaded. You can now reset safely.");
+        }
+      }, ["Download backup first (optional)"]),
+    ]) : null,
+    el("div", {class:"modal-actions"}, [
+      el("button", {class:"btn btn-ghost", onclick:closeModal}, ["Cancel"]),
+      el("div", {class:"modal-actions-right"}, [
+        el("button", {class:"btn btn-danger", onclick:()=>{
+          closeModal();
+          state = defaultState();
+          saveState();
+          applyAppearance();
+          location.reload();
+        }}, ["Reset All Data"])
+      ])
+    ])
+  ]);
+  openModal("Reset All Data", body);
 }
 
 /* =========================================================
