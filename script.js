@@ -1,13 +1,9 @@
-/* =========================================================
-   COURSEWORK — application logic
-   ========================================================= */
+
 
 (function(){
 "use strict";
 
-/* ---------------------------------------------------------
-   CONSTANTS
---------------------------------------------------------- */
+
 const STORAGE_KEY = "coursework.state.v1";
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const CLASS_TYPES_DEFAULT = ["Zoom","Face to Face","Online","Other"];
@@ -20,9 +16,6 @@ const WIDGET_LABELS = {
   quickactions:"Quick Actions"
 };
 
-/* ---------------------------------------------------------
-   STATE
---------------------------------------------------------- */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
 function defaultState(){
@@ -37,7 +30,6 @@ function defaultState(){
       theme:"light", density:"comfortable", radius:"soft", reduceMotion:false,
       classTypes: CLASS_TYPES_DEFAULT.slice(),
       widgets:{ nextclass:true, progress:true, todayschedule:true, todaytasks:true, deadlines:true, focusstats:true, quickactions:true },
-      // Image auto-backup
       imageAutoBackup: true,
       imageBackupThreshold: 10,
       imageBackupLastCount: 0,
@@ -61,7 +53,6 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    // merge with defaults to survive schema growth
     const def = defaultState();
     return deepMerge(def, parsed);
   }catch(e){
@@ -94,10 +85,7 @@ function saveState(){
     toast("Could not save — storage may be full.");
   }
 }
-
-/* ---------------------------------------------------------
-   HELPERS
---------------------------------------------------------- */
+ 
 function $(sel, root){ return (root||document).querySelector(sel); }
 function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
 function el(tag, attrs, children){
@@ -149,10 +137,7 @@ function toast(msg){
   clearTimeout(toast._timer);
   toast._timer = setTimeout(()=>t.classList.remove("show"), 2200);
 }
-
-/* ---------------------------------------------------------
-   THEME / APPEARANCE
---------------------------------------------------------- */
+ 
 function applyAppearance(){
   const s = state.settings;
   let theme = s.theme;
@@ -171,10 +156,7 @@ function toggleTheme(){
   applyAppearance();
   saveState();
 }
-
-/* ---------------------------------------------------------
-   CLOCK
---------------------------------------------------------- */
+ 
 function tickClock(){
   const d = new Date();
   const timeStr = state.settings.timeFormat === "12"
@@ -184,10 +166,7 @@ function tickClock(){
   const timeEl = $("#clock-time"); if(timeEl) timeEl.textContent = timeStr;
   const dateEl = $("#clock-date"); if(dateEl) dateEl.textContent = dateStr;
 }
-
-/* ---------------------------------------------------------
-   NAVIGATION
---------------------------------------------------------- */
+ 
 function switchView(view){
   $all(".nav-item").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
   $all(".view").forEach(v=>v.classList.toggle("active", v.id === "view-"+view));
@@ -199,10 +178,7 @@ function switchView(view){
 
 function openSidebarMobile(){ $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); }
 function closeSidebarMobile(){ $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); }
-
-/* ---------------------------------------------------------
-   MODAL
---------------------------------------------------------- */
+ 
 function openModal(title, bodyNode, opts){
   $("#modal-title").textContent = title;
   const body = $("#modal-body");
@@ -216,13 +192,11 @@ function openModal(title, bodyNode, opts){
 function closeModal(){
   $("#modal-overlay").classList.add("hidden");
   $("#modal-body").innerHTML = "";
-  // Reset any drag transform
-  const box = $("#modal-box");
+   const box = $("#modal-box");
   if(box){ box.style.transform = ""; box.dataset.dx = "0"; box.dataset.dy = "0"; }
 }
 
-// Make modal draggable by its header
-let _modalDragWired = false;
+ let _modalDragWired = false;
 function enableModalDrag(){
   if(_modalDragWired) return;
   _modalDragWired = true;
@@ -243,8 +217,7 @@ function enableModalDrag(){
   }
 
   function onDown(e){
-    // Ignore drags started on interactive elements inside the header (like the close button)
-    if(e.target.closest("button,input,select,textarea,a")) return;
+     if(e.target.closest("button,input,select,textarea,a")) return;
     dragging = true;
     const p = getPoint(e);
     startX = p.x; startY = p.y;
@@ -284,11 +257,7 @@ function confirmModal(message, onConfirm){
     ])
   ]);
   openModal("Confirm", wrap);
-}
-
-/* ---------------------------------------------------------
-   FORM FIELD BUILDERS
---------------------------------------------------------- */
+} 
 function field(labelText, inputNode){
   return el("div", {class:"form-row"}, [ el("label",{},[labelText]), inputNode ]);
 }
@@ -315,10 +284,7 @@ function select(options, value){
 function subjectSelectOptions(){
   return [{value:"", label:"— No subject —"}, ...state.subjects.map(s=>({value:s.id, label:s.name}))];
 }
-
-/* =========================================================
-   CLASSES / SCHEDULE
-========================================================= */
+ 
 function openClassModal(existing){
   const c = existing || { id:uid(), subject:"", day: todayName(), start:"08:00", end:"09:00", location:"", type: state.settings.defaultClassType, instructor:"", room:"", notes:"" };
 
@@ -410,10 +376,7 @@ function renderSchedule(){
     grid.appendChild(col);
   });
 }
-
-/* =========================================================
-   TASKS / ASSIGNMENTS
-========================================================= */
+ 
 let taskFilter = "all";
 let taskSearchTerm = "";
 
@@ -543,10 +506,7 @@ function emptyState(title, sub){
     sub ? el("p", {class:"small"}, [sub]) : null
   ]);
 }
-
-/* =========================================================
-   SUBJECTS
-========================================================= */
+ 
 function openSubjectModal(existing){
   const s = existing || { id:uid(), name:"", code:"", instructor:"", room:"", schedule:"", description:"", notes:"", priority:"Medium" };
   const fName = input("text", s.name, "Subject name");
@@ -623,10 +583,7 @@ function renderSubjects(){
     wrap.appendChild(card);
   });
 }
-
-/* =========================================================
-   GRADES
-========================================================= */
+ 
 function ensureGradeRecord(subjectId){
   if(!state.grades[subjectId]){
     state.grades[subjectId] = { categories:[], targetGrade: state.settings.target };
@@ -725,8 +682,7 @@ function renderGradePanel(subjectId){
   addRow.appendChild(catNameSelect); addRow.appendChild(scoreI); addRow.appendChild(maxI); addRow.appendChild(weightI); addRow.appendChild(addBtn);
   panel.appendChild(el("div",{class:"card"},[ el("div",{class:"card-head"},[el("h3",{},["Add Grading Category"])]), el("div",{class:"card-body"},[addRow]) ]));
 
-  // Target grade + required score helper
-  const targetCard = el("div", {class:"card"}, [
+   const targetCard = el("div", {class:"card"}, [
     el("div",{class:"card-head"},[el("h3",{},["Target"])]),
     el("div",{class:"card-body settings-form"},[
       field("Target grade for this subject", (()=>{
@@ -756,10 +712,7 @@ function refreshGradeSummaryOnly(subjectId){ renderGradePanel(subjectId); }
 function statCard(label, value){
   return el("div", {class:"stat-card"}, [ el("div",{class:"stat-label"},[label]), el("div",{class:"stat-value"},[value]) ]);
 }
-
-/* =========================================================
-   FOCUS TIMER
-========================================================= */
+ 
 const focusTimer = {
   mode:"focus", running:false, remaining:25*60, total:25*60, interval:null,
   sessionsThisCycle:0
@@ -769,7 +722,7 @@ function modeDuration(mode){
   if(mode==="focus") return s.focusDur*60;
   if(mode==="short") return s.shortDur*60;
   if(mode==="long") return s.longDur*60;
-  return s.focusDur*60; // custom defaults to focus dur, user can edit via settings-like inline later
+  return s.focusDur*60;  
 }
 function setFocusMode(mode){
   focusTimer.mode = mode;
@@ -832,8 +785,7 @@ function completeTimerSession(){
   } else {
     toast("Break complete.");
   }
-  // auto-advance
-  const s = state.settings;
+   const s = state.settings;
   let next = "focus";
   if(focusTimer.mode==="focus"){
     next = (focusTimer.sessionsThisCycle % s.sessionsBeforeLong === 0) ? "long" : "short";
@@ -859,10 +811,7 @@ function renderFocus(){
   const todayCount = fs.history.filter(h=> new Date(h.date).toDateString()===new Date().toDateString() && h.mode!=="short" && h.mode!=="long").length;
   panel.appendChild(el("div",{class:"focus-stat-row"},[ el("span",{},["Sessions today"]), el("strong",{},[String(todayCount)]) ]));
 }
-
-/* =========================================================
-   NOTES
-========================================================= */
+ 
 let noteSearchTerm = "";
 function openNoteModal(existing){
   const n = existing || { id:uid(), title:"", content:"", subject:"", created:new Date().toISOString(), updated:new Date().toISOString(), pinned:false, archived:false };
@@ -928,11 +877,7 @@ function renderNotes(){
     ]);
     wrap.appendChild(card);
   });
-}
-
-/* =========================================================
-   FILES / RESOURCES
-========================================================= */
+} 
 let fileFilter = "All";
 function openFileModal(existing){
   const f = existing || { id:uid(), name:"", url:"", description:"", subject:"", category:"Modules" };
@@ -999,18 +944,14 @@ function renderFiles(){
     wrap.appendChild(row);
   });
 }
-
-/* =========================================================
-   DASHBOARD
-========================================================= */
+ 
 function renderDashboard(){
   const h = new Date().getHours();
   const greet = h<12 ? "Good morning" : h<18 ? "Good afternoon" : "Good evening";
   $("#greeting").textContent = `${greet}, ${state.profile.name || "Student"}`;
   $("#greeting-sub").textContent = new Date().toLocaleDateString([], {weekday:"long", month:"long", day:"numeric"});
 
-  // widget visibility
-  $all(".widget").forEach(w=>{
+   $all(".widget").forEach(w=>{
     const key = w.dataset.widget;
     w.classList.toggle("hidden", state.settings.widgets[key]===false);
   });
@@ -1027,8 +968,7 @@ function nextUpcomingClass(){
   const now = new Date();
   const order = orderedDays();
   const todayIdx = DAYS.indexOf(todayName());
-  // check today's remaining classes first, then following days
-  for(let offset=0; offset<8; offset++){
+   for(let offset=0; offset<8; offset++){
     const dayIdx = (todayIdx+offset)%7;
     const day = DAYS[dayIdx];
     const classes = state.classes.filter(c=>c.day===day).sort((a,b)=>a.start.localeCompare(b.start));
@@ -1072,7 +1012,7 @@ function renderNextClass(){
 function renderProgressWidget(){
   const box = $("#widget-progress");
   box.innerHTML = "";
-  const weekTasks = state.tasks; // overall completion as weekly proxy
+  const weekTasks = state.tasks;  
   const total = weekTasks.length;
   const done = weekTasks.filter(t=>t.completed).length;
   const pct = total>0 ? Math.round(done/total*100) : 0;
@@ -1151,10 +1091,7 @@ function renderFocusStatsWidget(){
   box.appendChild(el("div",{class:"focus-stat-row"},[el("span",{},["Sessions completed"]), el("strong",{},[String(fs.sessionsCompleted)])]));
   box.appendChild(el("div",{class:"focus-stat-row"},[el("span",{},["Total focus time"]), el("strong",{},[Math.round(fs.totalFocusMinutes/60*10)/10+" hrs"])]));
 }
-
-/* =========================================================
-   SETTINGS
-========================================================= */
+ 
 function fillSettingsForm(){
   const p = state.profile, s = state.settings;
   $("#s-name").value = p.name; $("#s-studentid").value = p.studentId; $("#s-program").value = p.program;
@@ -1170,13 +1107,11 @@ function fillSettingsForm(){
   $("#s-focusdur").value = s.focusDur; $("#s-shortdur").value = s.shortDur; $("#s-longdur").value = s.longDur; $("#s-sessionsbeforelong").value = s.sessionsBeforeLong;
   $("#s-theme").value = s.theme; $("#s-density").value = s.density; $("#s-radius").value = s.radius; $("#s-reducemotion").checked = s.reduceMotion;
 
-  // Image auto-backup settings
-  const iab = $("#s-imageautobackup"); if(iab) iab.checked = s.imageAutoBackup !== false;
+   const iab = $("#s-imageautobackup"); if(iab) iab.checked = s.imageAutoBackup !== false;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) ibt.value = s.imageBackupThreshold || 10;
   const idab = $("#s-imagedeleteafterbackup"); if(idab) idab.checked = !!s.imageDeleteAfterBackup;
 
-  // Instant apply for appearance controls
-  ["s-theme","s-density","s-radius"].forEach(id=>{
+   ["s-theme","s-density","s-radius"].forEach(id=>{
     const el = $("#"+id);
     if(el && !el._instantWired){
       el.addEventListener("change", ()=>{
@@ -1226,8 +1161,7 @@ function saveSettingsForm(){
   s.sessionsBeforeLong = Number($("#s-sessionsbeforelong").value)||4;
   s.theme = $("#s-theme").value; s.density = $("#s-density").value; s.radius = $("#s-radius").value; s.reduceMotion = $("#s-reducemotion").checked;
 
-  // Image auto-backup
-  const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
+   const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) s.imageBackupThreshold = Math.max(1, Number(ibt.value)||10);
   const idab = $("#s-imagedeleteafterbackup"); if(idab) s.imageDeleteAfterBackup = idab.checked;
 
@@ -1242,8 +1176,7 @@ function saveSettingsForm(){
   toast("Settings saved.");
 }
 
-// Load jsPDF from CDN on demand
-let _jspdfLoading = null;
+ let _jspdfLoading = null;
 function loadJsPdf(){
   if(window.jspdf) return Promise.resolve();
   if(_jspdfLoading) return _jspdfLoading;
@@ -1273,8 +1206,7 @@ async function exportDataPdf(){
     const margin = 40;
     let y = margin;
 
-    // Title
-    doc.setFontSize(18); doc.setFont("helvetica","bold");
+     doc.setFontSize(18); doc.setFont("helvetica","bold");
     doc.text(state.profile.name || "My Coursework", margin, y); y += 22;
     doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(120);
     const subLine = [
@@ -1285,8 +1217,7 @@ async function exportDataPdf(){
     doc.text("Exported " + new Date().toLocaleString(), margin, y); y += 20;
     doc.setTextColor(0);
 
-    // SUBJECTS
-    if(state.subjects.length){
+     if(state.subjects.length){
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Subjects", margin, y); y += 6;
       doc.autoTable({
@@ -1300,8 +1231,7 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    // SCHEDULE
-    if(state.classes.length){
+     if(state.classes.length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Weekly Schedule", margin, y); y += 6;
@@ -1325,8 +1255,7 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    // ASSIGNMENTS / TASKS
-    if(state.tasks && state.tasks.length){
+     if(state.tasks && state.tasks.length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Assignments", margin, y); y += 6;
@@ -1344,8 +1273,7 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    // GRADES
-    if(state.grades && Object.keys(state.grades).length){
+     if(state.grades && Object.keys(state.grades).length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Grades", margin, y); y += 6;
@@ -1370,8 +1298,7 @@ async function exportDataPdf(){
       }
     }
 
-    // Footer with page numbers
-    const pageCount = doc.internal.getNumberOfPages();
+     const pageCount = doc.internal.getNumberOfPages();
     for(let p=1; p<=pageCount; p++){
       doc.setPage(p);
       doc.setFontSize(8); doc.setTextColor(150);
@@ -1379,8 +1306,7 @@ async function exportDataPdf(){
       doc.text("mySchedule", margin, doc.internal.pageSize.getHeight() - 20);
     }
 
-    // Save PDF
-    const fname = (state.profile.name || "my-coursework").toLowerCase().replace(/\s+/g,"-") + "-" + new Date().toISOString().slice(0,10) + ".pdf";
+     const fname = (state.profile.name || "my-coursework").toLowerCase().replace(/\s+/g,"-") + "-" + new Date().toISOString().slice(0,10) + ".pdf";
     doc.save(fname);
     toast("PDF exported.");
   }catch(err){
@@ -1389,8 +1315,7 @@ async function exportDataPdf(){
   }
 }
 
-// Full JSON backup — transferable across devices
-function exportData(){
+ function exportData(){
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1427,8 +1352,7 @@ function importData(file){
   reader.readAsText(file);
 }
 function resetData(){
-  // Build modal with optional download before reset
-  const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
+   const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
                   state.notes.length || state.images.length || state.files.length;
 
   const body = el("div", {}, [
@@ -1458,17 +1382,7 @@ function resetData(){
   ]);
   openModal("Reset All Data", body);
 }
-
-/* =========================================================
-   AI IMAGE ANALYSIS — Claude Vision API
-   ========================================================= */
-
-/* =========================================================
-   IMPROVED OCR-ONLY PARSER (no AI needed)
-   Understands ICCT COR day codes: WSa MTh M W T F Sa
-========================================================= */
-
-// ICCT day code expansion: e.g. "WSa" -> ["Wednesday","Saturday"]
+ 
 const ICCT_DAY_MAP = {
   "M":   ["Monday"],
   "T":   ["Tuesday"],
@@ -1499,13 +1413,10 @@ const ICCT_DAY_MAP = {
 };
 
 function expandDayCodes(raw){
-  // Try exact match first
-  if(ICCT_DAY_MAP[raw]) return ICCT_DAY_MAP[raw];
-  // Try uppercase
-  const up = Object.keys(ICCT_DAY_MAP).find(k=>k.toUpperCase()===raw.toUpperCase());
+   if(ICCT_DAY_MAP[raw]) return ICCT_DAY_MAP[raw];
+   const up = Object.keys(ICCT_DAY_MAP).find(k=>k.toUpperCase()===raw.toUpperCase());
   if(up) return ICCT_DAY_MAP[up];
-  // Split known patterns greedily: WSa -> W + Sa, MTh -> M + Th
-  const order = ["MTh","TTh","ThSa","TThS","MWF","WSa","MSa","TSa","FSa","WS","MS","TS","MW","MF","MT","TW","WF","ThF","Th","Sa","Su","Mo","Tu","We","Fr","M","T","W","F","S"];
+   const order = ["MTh","TTh","ThSa","TThS","MWF","WSa","MSa","TSa","FSa","WS","MS","TS","MW","MF","MT","TW","WF","ThF","Th","Sa","Su","Mo","Tu","We","Fr","M","T","W","F","S"];
   const days = [];
   let rem = raw;
   while(rem.length > 0){
@@ -1518,14 +1429,13 @@ function expandDayCodes(raw){
         break;
       }
     }
-    if(!matched) break; // unknown remainder
+    if(!matched) break;  
   }
   return days.length ? days : null;
 }
 
 function parseTimeRange(str){
-  // Matches: "06:00 AM - 07:30 AM", "07:30 AM-09:00 AM", "11:00 AM - 01:00 PM"
-  const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+   const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
   if(!m) return null;
   function to24(h, min, period){
     h = parseInt(h); min = parseInt(min);
@@ -1541,18 +1451,12 @@ function parseTimeRange(str){
     end:   to24(m[4], m[5], m[6] || m[3])
   };
 }
-
-/**
- * Parses ICCT COR / schedule text (from OCR or PDF text extraction).
- * Handles the exact column layout: Course | Section | LecU | LabU | Days | Time | Room
- * Also handles simpler weekly schedule grid format.
- */
+ 
 function parseScheduleText(rawText){
   const rows = [];
   const lines = rawText.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
 
-  // Regex tools
-  const COR_DAY_RE = /\b(TThS|MWF|MTh|TTh|ThF|ThSa|WSa|MSa|TSa|FSa|MW|MF|MT|TW|WF|WS|MS|Th|Sa|Su|M|T|W|F|S)\b/;
+   const COR_DAY_RE = /\b(TThS|MWF|MTh|TTh|ThF|ThSa|WSa|MSa|TSa|FSa|MW|MF|MT|TW|WF|WS|MS|Th|Sa|Su|M|T|W|F|S)\b/;
   const TIME_RE    = /(\d{1,2}:\d{2}\s*(?:AM|PM)?\s*[-\u2013\u2014to]+\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)/i;
   const ROOM_RE    = /\b([A-Z]{1,4}\d[\w.\-]*|GYM|ZOOM|ONLINE)\b/;
   const COURSE_CODE_RE = /\b([A-Z]{2,8}-?\d{2,3}[A-Z]?)\b/;
@@ -1577,31 +1481,21 @@ function parseScheduleText(rawText){
     if(t.includes("ONLINE")) return "Online";
     if(t.includes("FACE")) return "Face to Face";
     return "Face to Face";
-  }
-
-  // ============================================================
-  // MODE 1: ICCT COR table format
-  // Course code line → subject name line → (row with days + time + room)
-  // Some rows have multiple times on 2 lines (LEC + LAB) — capture both
-  // ============================================================
-  let currentSubject = "";
+  } 
+   let currentSubject = "";
   let currentCode    = "";
-  let lastRowIdx     = -1;  // for detecting continuation LAB lines
+  let lastRowIdx     = -1;  
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
 
-    // Skip pure header lines
-    if(/^(Course|Section|Lec\s*Units|Lab\s*Units|Days|Time and Date|Room|Total|Downpayment|Installment|TERM|AMOUNT|DUE DATE)/i.test(line)) continue;
+     if(/^(Course|Section|Lec\s*Units|Lab\s*Units|Days|Time and Date|Room|Total|Downpayment|Installment|TERM|AMOUNT|DUE DATE)/i.test(line)) continue;
     if(/^(Student|Full Name|Home Address|Academic|Contact|Program|Year Level|Sex|LRN)/i.test(line)) continue;
 
-    // Course code detection: OLENG01, OLMATH01, OLFIL-01, OLSOFAPP, etc.
-    const codeMatch = line.match(COURSE_CODE_RE);
+     const codeMatch = line.match(COURSE_CODE_RE);
     if(codeMatch && line.length < 80 && !TIME_RE.test(line) && !/LFAU/i.test(line)){
       currentCode = codeMatch[1];
-      currentSubject = "";  // reset — next line likely has the full name
-      // Try same line: the code may be followed by "Google Classroom" then subject on next line
-      // Check if same line contains subject text after the code
+      currentSubject = "";  
       const afterCode = line.replace(codeMatch[1],"").replace(/Google\s+Classroom/i,"").trim();
       if(afterCode && afterCode.length > 3 && !/Gclass/i.test(afterCode)){
         currentSubject = afterCode;
@@ -1609,8 +1503,7 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    // Subject name line (right after code, before Gclass Code)
-    if(currentCode && !currentSubject &&
+     if(currentCode && !currentSubject &&
        !/Google\s+Classroom|Gclass\s+Code|LFAU|Section/i.test(line) &&
        /[A-Za-z]{4,}/.test(line) && line.length < 100 &&
        !COR_DAY_RE.test(line) && !TIME_RE.test(line)){
@@ -1618,11 +1511,9 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    // Skip Gclass Code lines
-    if(/Gclass\s*Code/i.test(line)) continue;
+     if(/Gclass\s*Code/i.test(line)) continue;
 
-    // Data row: day code + time
-    const dayMatch  = line.match(COR_DAY_RE);
+     const dayMatch  = line.match(COR_DAY_RE);
     const timeMatch = line.match(TIME_RE);
 
     if(dayMatch && timeMatch){
@@ -1640,18 +1531,15 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    // Continuation LAB line (time only, no day code — inherits days from prev row)
-    if(timeMatch && !dayMatch && lastRowIdx >= 0){
+     if(timeMatch && !dayMatch && lastRowIdx >= 0){
       const time = parseTimeRange(timeMatch[1]);
       if(!time) continue;
       const roomMatch = line.match(ROOM_RE);
       const room = roomMatch ? roomMatch[1] : "";
       const type = detectType(line);
-      // Get days from last batch of rows (same subject)
-      const prevRow = rows[lastRowIdx];
+       const prevRow = rows[lastRowIdx];
       if(prevRow){
-        // Find all rows from lastRowIdx to end that share the same subject batch
-        const sameBatchDays = new Set();
+         const sameBatchDays = new Set();
         for(let k = lastRowIdx; k < rows.length; k++){
           if(rows[k].subject === prevRow.subject) sameBatchDays.add(rows[k].day);
         }
@@ -1660,11 +1548,7 @@ function parseScheduleText(rawText){
       continue;
     }
   }
-
-  // ============================================================
-  // MODE 2: Weekly grid format — ALWAYS run this too (not just fallback)
-  // Handles: MONDAY / TUESDAY / WEDNESDAY sections with time ranges under each
-  // ============================================================
+ 
   let curDay = null;
   let pendingSubject = "";
   for(let i = 0; i < lines.length; i++){
@@ -1687,8 +1571,7 @@ function parseScheduleText(rawText){
       const room = roomMatch ? roomMatch[1] : "";
       const type = detectType(line);
 
-      // Extract subject: strip time, room, type keywords
-      let subj = line
+       let subj = line
         .replace(timeMatch[1],"")
         .replace(ROOM_RE,"")
         .replace(/ZOOM|FACE\s*TO\s*FACE|F2F|ONLINE|GYM|LEC|LAB/gi,"")
@@ -1696,15 +1579,12 @@ function parseScheduleText(rawText){
         .replace(/\s+/g," ")
         .trim();
 
-      // If line has no subject text, look at surrounding lines
-      if(!subj || subj.length < 3){
-        // Try previous line
-        if(pendingSubject) subj = pendingSubject;
+       if(!subj || subj.length < 3){
+         if(pendingSubject) subj = pendingSubject;
         else if(lines[i-1] && !TIME_RE.test(lines[i-1]) && !DAY_HEADER_RE.test(lines[i-1]) && lines[i-1].length > 3){
           subj = lines[i-1].trim();
         }
-        // Try next line
-        else if(lines[i+1] && !TIME_RE.test(lines[i+1]) && !DAY_HEADER_RE.test(lines[i+1]) && lines[i+1].length > 3){
+         else if(lines[i+1] && !TIME_RE.test(lines[i+1]) && !DAY_HEADER_RE.test(lines[i+1]) && lines[i+1].length > 3){
           subj = lines[i+1].trim();
         }
       }
@@ -1713,14 +1593,10 @@ function parseScheduleText(rawText){
 
       addRow(subj, curDay, time, room, type, "");
     } else if(line.length > 3 && !/NO\s+CLASSES?/i.test(line) && !DAY_HEADER_RE.test(line)){
-      // Buffer possible subject name for next time entry
-      pendingSubject = line.trim();
+       pendingSubject = line.trim();
     }
   }
-
-  // ============================================================
-  // Deduplicate — same day + start + subject prefix
-  // ============================================================
+ 
   const seen = new Set();
   return rows.filter(r=>{
     const k = r.day + "|" + r.start + "|" + r.end + "|" + r.subject.toUpperCase().replace(/\s+/g,"").slice(0,20);
@@ -1732,16 +1608,12 @@ function parseScheduleText(rawText){
 const AI_KEY_STORAGE   = "coursework.ai_key";
 const AI_PROV_STORAGE  = "coursework.ai_provider";
 
-
-// vision:true  = sends image/PDF directly to the API
-// vision:false = text-only; runs Tesseract OCR first, sends extracted text
-// free:true    = has a free tier (no credit card required for basic use)
+ 
 const AI_PROVIDERS = {
 
 
 
-/* ---- VISION PROVIDERS (can read images/PDF directly) ---- */
-
+ 
   gemini: {
     label: "Google Gemini 2.0 Flash [FREE]",
     vision: true, free: true,
@@ -1767,8 +1639,7 @@ const AI_PROVIDERS = {
     vision: true, free: true,
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
-      // Groq vision does not support PDF — fall back to text prompt for PDF
-      const userContent = mediaType === "application/pdf"
+       const userContent = mediaType === "application/pdf"
         ? userPrompt + " (PDF provided as text — do your best)"
         : [
             { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
@@ -1900,8 +1771,7 @@ const AI_PROVIDERS = {
     extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
   },
 
-  /* ---- TEXT-ONLY PROVIDERS (OCR first, then parse) ---- */
-
+ 
   groq: {
     label: "Groq LLaMA 3.3 text-only [FREE] + OCR",
     vision: false, free: true,
@@ -2063,13 +1933,9 @@ function promptForApiKey(){
 async function requireApiKey(){
   const key = getApiKey();
   if(key) return key;
-  // Don't auto-prompt — throw so caller can fallback to local processing
-  throw new Error("NO_API_KEY");
+   throw new Error("NO_API_KEY");
 }
-
-/* =========================================================
-   PDF TEXT EXTRACTION via PDF.js (no API needed)
-========================================================= */
+ 
 let _pdfjsLoading = null;
 function loadPdfJs(){
   if(window.pdfjsLib) return Promise.resolve();
@@ -2099,8 +1965,7 @@ async function extractTextFromPdf(base64Data, onProgress){
     if(onProgress) onProgress(Math.round((p/pdf.numPages)*100));
     const page  = await pdf.getPage(p);
     const tc    = await page.getTextContent();
-    // Preserve line structure by grouping items by Y position
-    const byY = {};
+     const byY = {};
     tc.items.forEach(item=>{
       const y = Math.round(item.transform[5]);
       if(!byY[y]) byY[y]=[];
@@ -2113,8 +1978,7 @@ async function extractTextFromPdf(base64Data, onProgress){
   return fullText;
 }
 
-/* Lazy-load Tesseract only when needed for text-only providers */
-let _tesseractLoading = null;
+ let _tesseractLoading = null;
 function loadTesseract(){
   if(window.Tesseract) return Promise.resolve();
   if(_tesseractLoading) return _tesseractLoading;
@@ -2154,8 +2018,7 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
   const provKey = getProvider();
   const provider = AI_PROVIDERS[provKey] || AI_PROVIDERS.anthropic;
 
-  // Text-only providers: run OCR first, then send extracted text to the LLM
-  if(!provider.vision){
+   if(!provider.vision){
     if(progressCallback) progressCallback(15, "Running OCR on image...");
     let ocrText = "";
     if(mediaType === "application/pdf"){
@@ -2193,9 +2056,8 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
     }
     return provider.extractText(await response.json());
   }
-
-  // Vision-capable providers: send image directly
-  if(progressCallback) progressCallback(30, "Sending image to " + provider.label + "...");
+ 
+   if(progressCallback) progressCallback(30, "Sending image to " + provider.label + "...");
   return callProviderAPI(provider, key, systemPrompt, userPrompt, base64Data, mediaType);
 }
 
@@ -2211,11 +2073,7 @@ function readFileAsBase64(file){
     reader.onerror = ()=>reject(new Error("Could not read file."));
     reader.readAsDataURL(file);
   });
-}
-
-/* ---------------------------------------------------------
-   SCHEDULE PARSING — AI-powered
---------------------------------------------------------- */
+} 
 
 const SCHEDULE_SYSTEM_PROMPT = `You are an expert at reading Filipino college/university class schedule images (including printed COR, enrollment forms, and digital schedule screenshots).
 Extract all class schedule entries and return ONLY a valid JSON array, no markdown, no explanation, no extra text.
@@ -2291,10 +2149,7 @@ function normalizeClassType(t){
   if(tl.includes("face")) return "Face to Face";
   return state.settings.defaultClassType;
 }
-
-/* ---------------------------------------------------------
-   GRADE SCANNING — AI-powered
---------------------------------------------------------- */
+ 
 
 const GRADE_SYSTEM_PROMPT = `You are an expert at reading Filipino college/university grade sheets, report cards, and transcript images (including COR grades, class record screenshots, and grade printouts).
 Extract all grade entries and return ONLY a valid JSON array, no markdown, no explanation.
@@ -2340,10 +2195,7 @@ async function parseGradesWithAI(base64Data, mediaType, progressCallback){
     weight: Number(r.weight)||0
   })).filter(r=>r.subject);
 }
-
-/* ---------------------------------------------------------
-   SUBJECT SCANNING — AI-powered
---------------------------------------------------------- */
+ 
 
 const SUBJECT_SYSTEM_PROMPT = `You are an expert at reading Filipino college enrollment forms, class cards, and COR (Certificate of Registration) images.
 Extract all subjects/courses listed and return ONLY a valid JSON array, no markdown, no explanation.
@@ -2381,10 +2233,7 @@ async function parseSubjectsWithAI(base64Data, mediaType, progressCallback){
     room: String(r.room||"").trim(),
     schedule: String(r.schedule||"").trim()
   })).filter(r=>r.name);
-}
-/* =========================================================
-   AI-POWERED IMPORT MODALS
-========================================================= */
+} 
 
 function buildDropZone(labelText, subText){
   const fileInput = el("input", {type:"file", accept:"image/*,application/pdf", style:"display:none"});
@@ -2427,8 +2276,7 @@ function makeApiKeyBtn(){
   }, ["\uD83D\uDD11 API Key"]);
 }
 
-/* ------- SCHEDULE IMPORT ------- */
-function openImportImageModal(){
+ function openImportImageModal(){
   let extractedRows = [];
   const { dropZoneEl, onFile } = buildDropZone("Photo/screenshot of your class schedule or COR");
   const prog = buildProgressEl();
@@ -2456,8 +2304,7 @@ function openImportImageModal(){
         prog.set(10, "Sending to AI...");
         extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
       } else {
-        // No API key — extract text locally then parse
-        let rawText = "";
+         let rawText = "";
         if(imgData.isPdf){
           prog.set(10, "Reading PDF...");
           rawText = await extractTextFromPdf(imgData.base64, pct=>prog.set(10+Math.round(pct*0.7), "Reading PDF... "+pct+"%"));
@@ -2557,8 +2404,7 @@ function openImportImageModal(){
   }
 }
 
-/* ------- GRADE IMPORT ------- */
-function openImportGradeModal(){
+ function openImportGradeModal(){
   const { dropZoneEl, onFile } = buildDropZone("Photo of your grade sheet, report card, or class record");
   const prog = buildProgressEl();
   const resultsWrap = el("div", {class:"hidden"});
@@ -2655,8 +2501,7 @@ function openImportGradeModal(){
   }
 }
 
-/* ------- SUBJECT IMPORT ------- */
-function openImportSubjectModal(){
+ function openImportSubjectModal(){
   const { dropZoneEl, onFile } = buildDropZone("Photo of your enrollment form, COR, or class list");
   const prog = buildProgressEl();
   const resultsWrap = el("div", {class:"hidden"});
@@ -2684,8 +2529,7 @@ function openImportSubjectModal(){
         prog.set(20,"Sending to AI...");
         subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
       } else {
-        // No API key — extract locally then take unique subjects from schedule parser
-        let rawText = "";
+         let rawText = "";
         if(imgData.isPdf){
           prog.set(10,"Reading PDF...");
           rawText = await extractTextFromPdf(imgData.base64, pct=>prog.set(10+Math.round(pct*0.7),"Reading PDF... "+pct+"%"));
@@ -2767,10 +2611,7 @@ function openImportSubjectModal(){
   }
 }
 
-
-/* =========================================================
-   SEARCH
-========================================================= */
+ 
 function runSearch(term){
   const box = $("#search-results");
   if(!term){ box.classList.add("hidden"); box.innerHTML=""; return; }
@@ -2803,10 +2644,7 @@ function runSearch(term){
 function switchToNav(view){
   switchView(view);
 }
-
-/* =========================================================
-   FIRST-TIME SETUP
-========================================================= */
+ 
 function showSetupIfNeeded(){
   if(state.setupDone){
     $("#setup-screen").classList.add("hidden");
@@ -2829,26 +2667,16 @@ function finishSetup(skip){
   $("#app").classList.remove("hidden");
   renderAll();
 }
-
-/* =========================================================
-   RENDER ALL
-========================================================= */
-
-/* =========================================================
-   IMAGES MODULE — upload, view, delete
-========================================================= */
-
+ 
 let _imageSearchQuery = "";
 
-// Resize/compress large images to keep localStorage size manageable
-async function compressImageFile(file, maxDim, quality){
+ async function compressImageFile(file, maxDim, quality){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>{
-        // Determine target dimensions
-        let w = img.width, h = img.height;
+         let w = img.width, h = img.height;
         const scale = Math.min(1, maxDim / Math.max(w, h));
         w = Math.round(w * scale);
         h = Math.round(h * scale);
@@ -2876,8 +2704,7 @@ async function handleImageUpload(files){
   for(const file of files){
     if(!file.type.startsWith("image/")){ continue; }
     try{
-      // Compress to max 1600px on longest side, quality 0.85
-      const { dataUrl, width, height } = await compressImageFile(file, 1600, 0.85);
+       const { dataUrl, width, height } = await compressImageFile(file, 1600, 0.85);
       const now = new Date().toISOString();
       state.images.push({
         id: uid(),
@@ -2902,11 +2729,9 @@ async function handleImageUpload(files){
       toast("Added " + added + " image" + (added===1?"":"s") + ".");
       checkAutoBackup();
     }catch(err){
-      // Likely localStorage quota exceeded — auto-export as safety net
-      console.error("Storage quota exceeded:", err);
+       console.error("Storage quota exceeded:", err);
       toast("Storage full! Auto-downloading backup...");
-      exportImagesBackup(true); // force export
-      // Keep only the last few images to save space
+      exportImagesBackup(true); 
       state.images = state.images.slice(-3);
       try{ saveState(); renderImages(); }catch(e){}
       toast("Backup downloaded. Delete some images or import backup on a device with more space.");
@@ -2915,10 +2740,7 @@ async function handleImageUpload(files){
     toast("No valid images uploaded.");
   }
 }
-
-/**
- * Auto-backup: when image count grows past threshold, export a JSON backup.
- */
+ 
 function checkAutoBackup(){
   const s = state.settings;
   if(!s.imageAutoBackup) return;
@@ -2930,11 +2752,7 @@ function checkAutoBackup(){
     exportImagesBackup(false);
   }
 }
-
-/**
- * Exports images (+ full app state) as a JSON file.
- * If `silent` is false, shows toast. Updates last backup count.
- */
+ 
 function exportImagesBackup(silent){
   try{
     const payload = {
@@ -2958,8 +2776,7 @@ function exportImagesBackup(silent){
     if(!silent) toast("Backup downloaded (" + state.images.length + " images).");
     else toast("Auto-backup: " + state.images.length + " images saved to your Downloads folder.");
 
-    // Optional: delete images after backup
-    if(state.settings.imageDeleteAfterBackup){
+     if(state.settings.imageDeleteAfterBackup){
       setTimeout(()=>{
         confirmModal("Backup saved. Delete uploaded images to free up space?", ()=>{
           state.images = [];
@@ -3050,8 +2867,7 @@ function renderImages(){
   if(!container) return;
   container.innerHTML = "";
 
-  // Update backup status banner
-  const statusEl = $("#image-backup-status");
+   const statusEl = $("#image-backup-status");
   if(statusEl){
     const s = state.settings;
     const total = state.images.length;
@@ -3139,33 +2955,25 @@ function renderAll(){
   renderFocus();
   if($("#view-grades").classList.contains("active")) renderGrades();
 }
-
-/* =========================================================
-   EVENT WIRING
-========================================================= */
+ 
 function wireEvents(){
-  // setup
-  $("#setup-finish").addEventListener("click", ()=>finishSetup(false));
+   $("#setup-finish").addEventListener("click", ()=>finishSetup(false));
   $("#setup-skip").addEventListener("click", ()=>finishSetup(true));
 
-  // nav
-  $all(".nav-item").forEach(btn=> btn.addEventListener("click", ()=>switchView(btn.dataset.view)));
+   $all(".nav-item").forEach(btn=> btn.addEventListener("click", ()=>switchView(btn.dataset.view)));
   $("#hamburger").addEventListener("click", openSidebarMobile);
   $("#scrim").addEventListener("click", closeSidebarMobile);
   $("#header-settings").addEventListener("click", ()=>switchView("settings"));
   $("#theme-toggle").addEventListener("click", toggleTheme);
 
-  // clock
-  tickClock();
+   tickClock();
   setInterval(tickClock, 1000);
 
-  // modal close
-  $("#modal-close").addEventListener("click", closeModal);
+   $("#modal-close").addEventListener("click", closeModal);
   $("#modal-overlay").addEventListener("click", (e)=>{ if(e.target.id==="modal-overlay") closeModal(); });
   document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
 
-  // quick actions + add buttons (event delegation)
-  document.addEventListener("click", (e)=>{
+   document.addEventListener("click", (e)=>{
     const actionBtn = e.target.closest("[data-action]");
     if(!actionBtn) return;
     const action = actionBtn.dataset.action;
@@ -3181,53 +2989,44 @@ function wireEvents(){
     else if(action==="set-api-key") promptForApiKey().then(()=>toast("API key saved.")).catch(()=>{});
   });
 
-  // task filters
-  $all("#task-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
+   $all("#task-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
     $all("#task-filters .tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active"); taskFilter = t.dataset.filter; renderTasks();
   }));
   $("#task-search").addEventListener("input", (e)=>{ taskSearchTerm = e.target.value; renderTasks(); });
   $("#task-sort").addEventListener("change", renderTasks);
 
-  // file filters
-  $all("#file-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
+   $all("#file-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
     $all("#file-filters .tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active"); fileFilter = t.dataset.cat; renderFiles();
   }));
 
-  // note search
-  $("#note-search").addEventListener("input", (e)=>{ noteSearchTerm = e.target.value; renderNotes(); });
+   $("#note-search").addEventListener("input", (e)=>{ noteSearchTerm = e.target.value; renderNotes(); });
 
-  // grades subject select
-  $("#grades-subject-select").addEventListener("change", (e)=>renderGradePanel(e.target.value));
+   $("#grades-subject-select").addEventListener("change", (e)=>renderGradePanel(e.target.value));
 
-  // focus timer
-  $all("#focus-modes .tab").forEach(t=> t.addEventListener("click", ()=>setFocusMode(t.dataset.mode)));
+   $all("#focus-modes .tab").forEach(t=> t.addEventListener("click", ()=>setFocusMode(t.dataset.mode)));
   $("#timer-start").addEventListener("click", startTimer);
   $("#timer-reset").addEventListener("click", resetTimer);
   $("#timer-skip").addEventListener("click", skipTimer);
 
-  // search
-  $("#global-search").addEventListener("input", (e)=>runSearch(e.target.value.trim()));
+   $("#global-search").addEventListener("input", (e)=>runSearch(e.target.value.trim()));
   document.addEventListener("click", (e)=>{
     if(!e.target.closest(".topbar-search") && !e.target.closest("#search-results")){
       $("#search-results").classList.add("hidden");
     }
   });
 
-  // settings
+  
   $("#btn-save-settings").addEventListener("click", saveSettingsForm);
-  $("#btn-export").addEventListener("click", exportData);
-  // Export = full JSON backup (transferable to other devices)
-  // Export as PDF = printable summary (not restorable)
+  $("#btn-export").addEventListener("click", exportData); 
   const btnPdf = $("#btn-export-pdf");
   if(btnPdf) btnPdf.addEventListener("click", exportDataPdf);
   $("#btn-import").addEventListener("click", ()=>$("#import-file").click());
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
 
-  // Images
-  const btnAddImg = $("#btn-add-image");
+   const btnAddImg = $("#btn-add-image");
   const imgInput  = $("#image-upload-input");
   if(btnAddImg && imgInput){
     btnAddImg.addEventListener("click", ()=>imgInput.click());
@@ -3242,8 +3041,7 @@ function wireEvents(){
     btnBackupNow.addEventListener("click", ()=>exportImagesBackup(false));
   }
 
-  // Drag & drop on the dropzone
-  const dz = $("#image-dropzone");
+   const dz = $("#image-dropzone");
   if(dz){
     dz.addEventListener("click", ()=>$("#image-upload-input").click());
     ["dragenter","dragover"].forEach(evt=>
@@ -3258,8 +3056,7 @@ function wireEvents(){
     });
   }
 
-  // Also allow dropping anywhere on the Images view
-  const viewImages = $("#view-images");
+   const viewImages = $("#view-images");
   if(viewImages){
     viewImages.addEventListener("dragover", (e)=>{ e.preventDefault(); if(dz) dz.classList.add("drag-over"); });
     viewImages.addEventListener("dragleave", (e)=>{ if(!viewImages.contains(e.relatedTarget) && dz) dz.classList.remove("drag-over"); });
@@ -3271,10 +3068,7 @@ function wireEvents(){
     });
   }
 }
-
-/* =========================================================
-   INIT
-========================================================= */
+ 
 function init(){
   applyAppearance();
   showSetupIfNeeded();
