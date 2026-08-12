@@ -15,7 +15,6 @@ const WIDGET_LABELS = {
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
-// â”€â”€ Notification UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function updateNotifPermStatus() {
   const el = $("#notif-perm-status");
   if (!el) return;
@@ -26,8 +25,6 @@ function updateNotifPermStatus() {
     : "âš ï¸ Permission not yet granted. Enable notifications above and save to request.";
 }
 
-// â”€â”€ Philippine College Grade System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Standard 1.0â€“5.0 transmutation (CHED-aligned)
 const PH_GRADE_TABLE = [
   { min: 97, max: 100, equiv: 1.0, desc: "Excellent" },
   { min: 94, max: 96,  equiv: 1.25, desc: "Excellent" },
@@ -49,7 +46,6 @@ function percentToPhGrade(pct) {
   return PH_GRADE_TABLE[PH_GRADE_TABLE.length - 1];
 }
 
-// â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _notifFired = new Set();
 
 function requestNotifPermission(cb) {
@@ -67,7 +63,7 @@ function sendNotif(title, body, tag) {
   if (_notifFired.has(tag)) return;
   _notifFired.add(tag);
   try { new Notification(title, { body, icon: "", tag }); } catch(e) {}
-  // Auto-clear tag after 2 minutes so same notif can fire next occurrence
+
   setTimeout(() => _notifFired.delete(tag), 120000);
 }
 
@@ -77,9 +73,8 @@ function checkNotifications() {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   const now = new Date();
-  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1]; // Mon=0 index
+  const dayName = DAYS[now.getDay() === 0 ? 6 : now.getDay() - 1];
 
-  // Class notifications
   state.classes.forEach(cls => {
     if (cls.day !== dayName) return;
     const [h, m] = cls.start.split(":").map(Number);
@@ -98,7 +93,6 @@ function checkNotifications() {
     }
   });
 
-  // Deadline / assignment notifications
   const deadlineMins = s.notifyDeadlineMinutes || 30;
   state.tasks.forEach(task => {
     if (!task.dueDate || task.status === "Completed") return;
@@ -111,7 +105,7 @@ function checkNotifications() {
         `task-${task.id}-deadline`
       );
     }
-    // Also notify 1 day before
+
     if (diffMin > 0 && diffMin <= 24 * 60 && diffMin > deadlineMins) {
       const hrs = Math.ceil(diffMin / 60);
       sendNotif(
@@ -136,7 +130,7 @@ function defaultState(){
       theme:"light", density:"comfortable", radius:"soft", reduceMotion:false,
       classTypes: CLASS_TYPES_DEFAULT.slice(),
       widgets:{ nextclass:true, progress:true, todayschedule:true, todaytasks:true, deadlines:true, focusstats:true, quickactions:true },
-      
+
       imageAutoBackup: true,
       imageBackupThreshold: 10,
       imageBackupLastCount: 0,
@@ -164,7 +158,7 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    
+
     const def = defaultState();
     return deepMerge(def, parsed);
   }catch(e){
@@ -250,9 +244,6 @@ function toast(msg){
   toast._timer = setTimeout(()=>t.classList.remove("show"), 2200);
 }
 
-/* ---------------------------------------------------------
-   THEME / APPEARANCE
---------------------------------------------------------- */
 function applyAppearance(){
   const s = state.settings;
   let theme = s.theme;
@@ -272,9 +263,6 @@ function toggleTheme(){
   saveState();
 }
 
-/* ---------------------------------------------------------
-   CLOCK
---------------------------------------------------------- */
 function tickClock(){
   const d = new Date();
   const timeStr = state.settings.timeFormat === "12"
@@ -285,9 +273,6 @@ function tickClock(){
   const dateEl = $("#clock-date"); if(dateEl) dateEl.textContent = dateStr;
 }
 
-/* ---------------------------------------------------------
-   BRANDING (app name / logo)
---------------------------------------------------------- */
 function applyBranding(){
   const b = state.brand || { name:"Coursework", logo:"" };
   document.title = (b.name || "Coursework") + " - Student Dashboard";
@@ -301,9 +286,6 @@ function applyBranding(){
   }
 }
 
-/* ---------------------------------------------------------
-   NAVIGATION
---------------------------------------------------------- */
 function switchView(view){
   $all(".nav-item").forEach(b=>b.classList.toggle("active", b.dataset.view===view));
   $all(".view").forEach(v=>v.classList.toggle("active", v.id === "view-"+view));
@@ -317,9 +299,6 @@ function switchView(view){
 function openSidebarMobile(){ $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); }
 function closeSidebarMobile(){ $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); }
 
-/* ---------------------------------------------------------
-   MODAL
---------------------------------------------------------- */
 function openModal(title, bodyNode, opts){
   $("#modal-title").textContent = title;
   const body = $("#modal-body");
@@ -333,12 +312,11 @@ function openModal(title, bodyNode, opts){
 function closeModal(){
   $("#modal-overlay").classList.add("hidden");
   $("#modal-body").innerHTML = "";
-  // Reset any drag transform
+
   const box = $("#modal-box");
   if(box){ box.style.transform = ""; box.dataset.dx = "0"; box.dataset.dy = "0"; }
 }
 
-// Make modal draggable by its header
 let _modalDragWired = false;
 function enableModalDrag(){
   if(_modalDragWired) return;
@@ -360,7 +338,7 @@ function enableModalDrag(){
   }
 
   function onDown(e){
-    // Ignore drags started on interactive elements inside the header (like the close button)
+
     if(e.target.closest("button,input,select,textarea,a")) return;
     dragging = true;
     const p = getPoint(e);
@@ -403,9 +381,6 @@ function confirmModal(message, onConfirm){
   openModal("Confirm", wrap);
 }
 
-/* ---------------------------------------------------------
-   FORM FIELD BUILDERS
---------------------------------------------------------- */
 function field(labelText, inputNode){
   return el("div", {class:"form-row"}, [ el("label",{},[labelText]), inputNode ]);
 }
@@ -433,9 +408,6 @@ function subjectSelectOptions(){
   return [{value:"", label:"â€” No subject â€”"}, ...state.subjects.map(s=>({value:s.id, label:s.name}))];
 }
 
-/* =========================================================
-   CLASSES / SCHEDULE
-========================================================= */
 function openClassModal(existing){
   const c = existing || { id:uid(), subject:"", day: todayName(), start:"08:00", end:"09:00", location:"", type: state.settings.defaultClassType, instructor:"", room:"", notes:"" };
 
@@ -528,9 +500,6 @@ function renderSchedule(){
   });
 }
 
-/* =========================================================
-   TASKS / ASSIGNMENTS
-========================================================= */
 let taskFilter = "all";
 let taskSearchTerm = "";
 
@@ -661,9 +630,6 @@ function emptyState(title, sub){
   ]);
 }
 
-/* =========================================================
-   SUBJECTS
-========================================================= */
 function openSubjectModal(existing){
   const s = existing || { id:uid(), name:"", code:"", instructor:"", room:"", schedule:"", description:"", notes:"", priority:"Medium" };
   const fName = input("text", s.name, "Subject name");
@@ -852,7 +818,6 @@ function renderGradePanel(subjectId){
   addRow.appendChild(catNameSelect); addRow.appendChild(scoreI); addRow.appendChild(maxI); addRow.appendChild(weightI); addRow.appendChild(addBtn);
   panel.appendChild(el("div",{class:"card"},[ el("div",{class:"card-head"},[el("h3",{},["Add Grading Category"])]), el("div",{class:"card-body"},[addRow]) ]));
 
-  
   const targetCard = el("div", {class:"card"}, [
     el("div",{class:"card-head"},[el("h3",{},["Target"])]),
     el("div",{class:"card-body settings-form"},[
@@ -898,7 +863,7 @@ function modeDuration(mode){
   if(mode==="focus") return s.focusDur*60;
   if(mode==="short") return s.shortDur*60;
   if(mode==="long") return s.longDur*60;
-  return s.focusDur*60; 
+  return s.focusDur*60;
 }
 function setFocusMode(mode){
   focusTimer.mode = mode;
@@ -961,7 +926,7 @@ function completeTimerSession(){
   } else {
     toast("Break complete.");
   }
-  
+
   const s = state.settings;
   let next = "focus";
   if(focusTimer.mode==="focus"){
@@ -1129,7 +1094,6 @@ function renderDashboard(){
   $("#greeting").textContent = `${greet}, ${state.profile.name || "Student"}`;
   $("#greeting-sub").textContent = new Date().toLocaleDateString([], {weekday:"long", month:"long", day:"numeric"});
 
-  
   $all(".widget").forEach(w=>{
     const key = w.dataset.widget;
     w.classList.toggle("hidden", state.settings.widgets[key]===false);
@@ -1147,7 +1111,7 @@ function nextUpcomingClass(){
   const now = new Date();
   const order = orderedDays();
   const todayIdx = DAYS.indexOf(todayName());
-  
+
   for(let offset=0; offset<8; offset++){
     const dayIdx = (todayIdx+offset)%7;
     const day = DAYS[dayIdx];
@@ -1192,7 +1156,7 @@ function renderNextClass(){
 function renderProgressWidget(){
   const box = $("#widget-progress");
   box.innerHTML = "";
-  const weekTasks = state.tasks; 
+  const weekTasks = state.tasks;
   const total = weekTasks.length;
   const done = weekTasks.filter(t=>t.completed).length;
   const pct = total>0 ? Math.round(done/total*100) : 0;
@@ -1287,19 +1251,16 @@ function fillSettingsForm(){
   $("#s-focusdur").value = s.focusDur; $("#s-shortdur").value = s.shortDur; $("#s-longdur").value = s.longDur; $("#s-sessionsbeforelong").value = s.sessionsBeforeLong;
   $("#s-theme").value = s.theme; $("#s-density").value = s.density; $("#s-radius").value = s.radius; $("#s-reducemotion").checked = s.reduceMotion;
 
-  
   const iab = $("#s-imageautobackup"); if(iab) iab.checked = s.imageAutoBackup !== false;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) ibt.value = s.imageBackupThreshold || 10;
   const idab = $("#s-imagedeleteafterbackup"); if(idab) idab.checked = !!s.imageDeleteAfterBackup;
 
-  // Notifications
   const sne = $("#s-notifenabled"); if(sne) sne.checked = !!s.notificationsEnabled;
   const snc = $("#s-notifclass"); if(snc) snc.value = s.notifyClassMinutes || 10;
   const snd = $("#s-notifdeadline"); if(snd) snd.value = s.notifyDeadlineMinutes || 30;
   const sgs = $("#s-gradesystem"); if(sgs) sgs.value = s.gradeSystem || "percentage";
   updateNotifPermStatus();
 
-  
   ["s-theme","s-density","s-radius"].forEach(id=>{
     const el = $("#"+id);
     if(el && !el._instantWired){
@@ -1350,12 +1311,10 @@ function saveSettingsForm(){
   s.sessionsBeforeLong = Number($("#s-sessionsbeforelong").value)||4;
   s.theme = $("#s-theme").value; s.density = $("#s-density").value; s.radius = $("#s-radius").value; s.reduceMotion = $("#s-reducemotion").checked;
 
-  
   const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
   const ibt = $("#s-imagebackupthreshold"); if(ibt) s.imageBackupThreshold = Math.max(1, Number(ibt.value)||10);
   const idab = $("#s-imagedeleteafterbackup"); if(idab) s.imageDeleteAfterBackup = idab.checked;
 
-  // Notifications
   const sne2 = $("#s-notifenabled"); if(sne2) s.notificationsEnabled = sne2.checked;
   const snc2 = $("#s-notifclass"); if(snc2) s.notifyClassMinutes = Math.max(1, Number(snc2.value)||10);
   const snd2 = $("#s-notifdeadline"); if(snd2) s.notifyDeadlineMinutes = Math.max(1, Number(snd2.value)||30);
@@ -1403,7 +1362,6 @@ async function exportDataPdf(){
     const margin = 40;
     let y = margin;
 
-    
     doc.setFontSize(18); doc.setFont("helvetica","bold");
     doc.text(state.profile.name || "My Coursework", margin, y); y += 22;
     doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(120);
@@ -1415,7 +1373,6 @@ async function exportDataPdf(){
     doc.text("Exported " + new Date().toLocaleString(), margin, y); y += 20;
     doc.setTextColor(0);
 
-    
     if(state.subjects.length){
       doc.setFontSize(13); doc.setFont("helvetica","bold");
       doc.text("Subjects", margin, y); y += 6;
@@ -1430,7 +1387,6 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    
     if(state.classes.length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
@@ -1455,7 +1411,6 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    
     if(state.tasks && state.tasks.length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
@@ -1474,7 +1429,6 @@ async function exportDataPdf(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    
     if(state.grades && Object.keys(state.grades).length){
       if(y > 720){ doc.addPage(); y = margin; }
       doc.setFontSize(13); doc.setFont("helvetica","bold");
@@ -1500,7 +1454,6 @@ async function exportDataPdf(){
       }
     }
 
-    
     const pageCount = doc.internal.getNumberOfPages();
     for(let p=1; p<=pageCount; p++){
       doc.setPage(p);
@@ -1509,7 +1462,6 @@ async function exportDataPdf(){
       doc.text("mySchedule", margin, doc.internal.pageSize.getHeight() - 20);
     }
 
-    
     const fname = (state.profile.name || "my-coursework").toLowerCase().replace(/\s+/g,"-") + "-" + new Date().toISOString().slice(0,10) + ".pdf";
     doc.save(fname);
     toast("PDF exported.");
@@ -1541,7 +1493,6 @@ async function saveSession(){
     return;
   }
 
-  
   const counts = [];
   if(hasTasks)  counts.push((state.tasks.length) + " task" + (state.tasks.length===1?"":"s"));
   if(hasNotes)  counts.push((state.notes.length) + " note" + (state.notes.length===1?"":"s"));
@@ -1595,7 +1546,6 @@ async function doSaveSession(){
       doc.setFont("helvetica","normal"); doc.setTextColor(0);
     }
 
-    
     doc.setFontSize(20); doc.setFont("helvetica","bold"); doc.setTextColor(20);
     doc.text(state.profile.name || "Student", margin, y); y += 24;
 
@@ -1606,7 +1556,6 @@ async function doSaveSession(){
     doc.setDrawColor(60); doc.setLineWidth(1); doc.line(margin, y, pageW-margin, y); y += 18;
     doc.setLineWidth(0.5); doc.setTextColor(0);
 
-    
     if(state.tasks?.length){
       sectionTitle("Tasks & Assignments");
       const rows = state.tasks.map(t=>{
@@ -1625,7 +1574,6 @@ async function doSaveSession(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    
     if(state.notes?.length){
       checkPage(30);
       sectionTitle("Notes");
@@ -1634,14 +1582,12 @@ async function doSaveSession(){
         const content = note.content || "";
         const contentLines = doc.splitTextToSize(content, contentW);
 
-        
         checkPage(36);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(20);
         doc.text((note.title||"Untitled") + (subj ? "  â€”  " + subj.name : ""), margin, y); y += 13;
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100);
         doc.text(note.createdAt ? new Date(note.createdAt).toLocaleDateString() : "", margin, y); y += 13;
 
-        
         doc.setTextColor(40); doc.setFontSize(9);
         for(let li = 0; li < contentLines.length; li++){
           if(y + 11 > pageH - 50){ doc.addPage(); y = margin; }
@@ -1655,7 +1601,6 @@ async function doSaveSession(){
       }
     }
 
-    
     if(Object.keys(state.grades||{}).length){
       checkPage(30);
       sectionTitle("Grades");
@@ -1663,7 +1608,7 @@ async function doSaveSession(){
       Object.entries(state.grades).forEach(([subjId, rec])=>{
         const subj = state.subjects.find(s=>s.id===subjId);
         const name = subj?subj.name:"?";
-        
+
         const cats = rec.categories||[];
         let avg = "";
         if(cats.length){
@@ -1699,7 +1644,6 @@ async function doSaveSession(){
       y = doc.lastAutoTable.finalY + 18;
     }
 
-    
     if(state.focusStats?.sessionsCompleted > 0){
       checkPage(60);
       sectionTitle("Focus Stats");
@@ -1710,7 +1654,6 @@ async function doSaveSession(){
       y += 6;
     }
 
-    
     if(state.images?.length){
       checkPage(30);
       sectionTitle("Images (" + state.images.length + ")");
@@ -1727,7 +1670,6 @@ async function doSaveSession(){
           doc.addImage(img.dataUrl, "JPEG", x, y, imgSize, imgSize, undefined, "FAST");
         }catch(e){  }
 
-        
         doc.setFontSize(7); doc.setTextColor(80);
         const cap = doc.splitTextToSize(img.title||"Untitled", imgSize);
         doc.text(cap[0], x, y + imgSize + 10);
@@ -1739,7 +1681,6 @@ async function doSaveSession(){
       y += 10;
     }
 
-    
     const pageCount = doc.internal.getNumberOfPages();
     for(let p = 1; p <= pageCount; p++){
       doc.setPage(p);
@@ -1748,18 +1689,16 @@ async function doSaveSession(){
       doc.text("Page " + p + " of " + pageCount, pageW - margin, pageH - 20, {align:"right"});
     }
 
-    
     const stamp = new Date().toISOString().slice(0,10);
     const fname = (state.profile.name||"session").toLowerCase().replace(/\s+/g,"-") + "-session-" + stamp + ".pdf";
     doc.save(fname);
 
-    
     state.tasks       = [];
     state.notes       = [];
     state.grades      = {};
     state.images      = [];
     state.focusStats  = { sessionsCompleted:0, totalFocusMinutes:0, history:[] };
-    
+
     state.settings.imageBackupLastCount = 0;
     saveState();
     renderAll();
@@ -1798,7 +1737,7 @@ function importData(file){
   reader.readAsText(file);
 }
 function resetData(){
-  
+
   const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
                   state.notes.length || state.images.length || state.files.length;
 
@@ -1860,12 +1799,12 @@ const ICCT_DAY_MAP = {
 };
 
 function expandDayCodes(raw){
-  
+
   if(ICCT_DAY_MAP[raw]) return ICCT_DAY_MAP[raw];
-  
+
   const up = Object.keys(ICCT_DAY_MAP).find(k=>k.toUpperCase()===raw.toUpperCase());
   if(up) return ICCT_DAY_MAP[up];
-  
+
   const order = ["MTh","TTh","ThSa","TThS","MWF","WSa","MSa","TSa","FSa","WS","MS","TS","MW","MF","MT","TW","WF","ThF","Th","Sa","Su","Mo","Tu","We","Fr","M","T","W","F","S"];
   const days = [];
   let rem = raw;
@@ -1879,13 +1818,13 @@ function expandDayCodes(raw){
         break;
       }
     }
-    if(!matched) break; 
+    if(!matched) break;
   }
   return days.length ? days : null;
 }
 
 function parseTimeRange(str){
-  
+
   const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-â€“â€”to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
   if(!m) return null;
   function to24(h, min, period){
@@ -1906,19 +1845,13 @@ function parseTimeRange(str){
 function parseScheduleText(rawText){
   const rows = [];
 
-  
-  
-  
   const text = rawText
-    .replace(/\u2022/g, "â€¢")          
+    .replace(/\u2022/g, "â€¢")
     .replace(/\t/g, " ")
     .replace(/ {2,}/g, " ");
 
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-  
-  
-  
   const TIME_RE  = /(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-â€“â€”to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i;
   const DAY_RE   = /\b(TThS|MWF|MTh|TTh|ThSa|WSa|MSa|TSa|FSa|ThF|WS|MS|MW|MF|MT|TW|WF|Th|Sa|Su|M|T|W|F|S)\b/;
   const CODE_RE  = /^(OL[A-Z0-9\-]+)\b/;
@@ -1940,7 +1873,7 @@ function parseScheduleText(rawText){
 
   function expandDays(code){
     if(DAY_MAP[code]) return DAY_MAP[code];
-    
+
     const k = Object.keys(DAY_MAP).find(x => x.toLowerCase() === code.toLowerCase());
     return k ? DAY_MAP[k] : [code];
   }
@@ -1982,28 +1915,23 @@ function parseScheduleText(rawText){
     }
   }
 
-  
-  
-  
-  
   let curSubject  = "";
   let curCode     = "";
-  let lastDays    = [];   
+  let lastDays    = [];
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
     if(SKIP_RE.test(line)) continue;
 
-    
     const codeM = line.match(CODE_RE);
     if(codeM){
       curCode    = codeM[1];
       curSubject = "";
-      
+
       for(let j = i+1; j < Math.min(i+5, lines.length); j++){
         const next = lines[j];
         if(SKIP_RE.test(next)) continue;
-        if(/^LFAU|^[A-Z]{4}\d{3}M\d{3}/.test(next)) break; 
+        if(/^LFAU|^[A-Z]{4}\d{3}M\d{3}/.test(next)) break;
         if(/Gclass/i.test(next)) continue;
         if(/Google Classroom/i.test(next)) continue;
         if(next.length > 3 && /[a-z]/.test(next)){
@@ -2014,7 +1942,6 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    
     if(curCode && !curSubject && !SKIP_RE.test(line) &&
        !/^LFAU|Gclass|Google/i.test(line) &&
        /[a-zA-Z]{4,}/.test(line) && line.length < 90 &&
@@ -2023,7 +1950,6 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    
     const dayM  = line.match(DAY_RE);
     const timeM = line.match(TIME_RE);
 
@@ -2032,8 +1958,6 @@ function parseScheduleText(rawText){
       const time  = parseTimeRange(line);
       if(!time) continue;
 
-      
-      
       const stripped = line
         .replace(TIME_RE, "")
         .replace(DAY_RE, "")
@@ -2041,9 +1965,8 @@ function parseScheduleText(rawText){
         .replace(/ZOOM|GYM|ONLINE|FACE\s*TO\s*FACE/gi, "")
         .replace(/\s+/g, " ").trim();
 
-      
       const roomM = line.match(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g);
-      
+
       const room  = (roomM||[]).filter(r => !DAY_MAP[r] && r !== dayM[1]).join(", ");
       const type  = detectType(line);
       const name  = curSubject || curCode || "Unknown";
@@ -2053,8 +1976,6 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    
-    
     if(timeM && !dayM && lastDays.length > 0){
       const time  = parseTimeRange(line);
       if(!time) continue;
@@ -2066,7 +1987,6 @@ function parseScheduleText(rawText){
       continue;
     }
 
-    
     if(dayM && !timeM){
       for(let j = i+1; j <= Math.min(i+3, lines.length-1); j++){
         const ahead = lines[j];
@@ -2087,10 +2007,6 @@ function parseScheduleText(rawText){
     }
   }
 
-  
-  
-  
-  
   let curDay = null;
   let pendingSubj = "";
 
@@ -2113,7 +2029,6 @@ function parseScheduleText(rawText){
       const room  = (roomM||[]).join(", ");
       const type  = detectType(line);
 
-      
       let subj = line
         .replace(TIME_RE, "")
         .replace(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g, "")
@@ -2121,7 +2036,7 @@ function parseScheduleText(rawText){
         .replace(/\s+/g, " ").trim();
 
       if(!subj || subj.length < 3){
-        
+
         subj = pendingSubj
           || (lines[i-1] && !TIME_RE.test(lines[i-1]) && !HDR_RE.test(lines[i-1]) && lines[i-1].length > 2 ? lines[i-1] : "")
           || (lines[i+1] && !TIME_RE.test(lines[i+1]) && lines[i+1].length > 2 ? lines[i+1] : "")
@@ -2134,9 +2049,6 @@ function parseScheduleText(rawText){
     }
   }
 
-  
-  
-  
   const seen = new Set();
   return rows.filter(r => {
     const k = r.day + "|" + r.start + "|" + r.end + "|" + r.subject.replace(/\s+/g,"").slice(0,20).toUpperCase();
@@ -2175,7 +2087,7 @@ const AI_PROVIDERS = {
     vision: true, free: true,
     endpoint: "https://api.groq.com/openai/v1/chat/completions",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
-      
+
       const userContent = mediaType === "application/pdf"
         ? userPrompt + " (PDF provided as text â€” do your best)"
         : [
@@ -2307,8 +2219,6 @@ const AI_PROVIDERS = {
     },
     extractText(data){ return ((data.choices||[])[0]?.message?.content||"").trim(); }
   },
-
-  
 
   groq: {
     label: "Groq LLaMA 3.3 text-only [FREE] + OCR",
@@ -2471,7 +2381,7 @@ function promptForApiKey(){
 async function requireApiKey(){
   const key = getApiKey();
   if(key) return key;
-  
+
   throw new Error("NO_API_KEY");
 }
 
@@ -2504,7 +2414,7 @@ async function extractTextFromPdf(base64Data, onProgress){
     if(onProgress) onProgress(Math.round((p/pdf.numPages)*100));
     const page  = await pdf.getPage(p);
     const tc    = await page.getTextContent();
-    
+
     const byY = {};
     tc.items.forEach(item=>{
       const y = Math.round(item.transform[5]);
@@ -2558,7 +2468,6 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
   const provKey = getProvider();
   const provider = AI_PROVIDERS[provKey] || AI_PROVIDERS.anthropic;
 
-  
   if(!provider.vision){
     if(progressCallback) progressCallback(15, "Running OCR on image...");
     let ocrText = "";
@@ -2598,7 +2507,6 @@ async function analyzeImageWithClaude(base64Data, mediaType, systemPrompt, userP
     return provider.extractText(await response.json());
   }
 
-  
   if(progressCallback) progressCallback(30, "Sending image to " + provider.label + "...");
   return callProviderAPI(provider, key, systemPrompt, userPrompt, base64Data, mediaType);
 }
@@ -2844,7 +2752,7 @@ function openImportImageModal(){
         prog.set(10, "Sending to AI...");
         extractedRows = await parseScheduleWithAI(imgData.base64, imgData.mediaType, (pct,msg)=>prog.set(pct,msg));
       } else {
-        
+
         let rawText = "";
         if(imgData.isPdf){
           prog.set(10, "Reading PDF...");
@@ -3070,7 +2978,7 @@ function openImportSubjectModal(){
         prog.set(20,"Sending to AI...");
         subjRows=await parseSubjectsWithAI(imgData.base64,imgData.mediaType,(pct,msg)=>prog.set(pct,msg));
       } else {
-        
+
         let rawText = "";
         if(imgData.isPdf){
           prog.set(10,"Reading PDF...");
@@ -3261,7 +3169,6 @@ function initOnboarding(){
   const skipBtn = $("#ob-skip");
   if(skipBtn) skipBtn.onclick = enterApp;
 
-  
   let touchStartX = 0;
   track.addEventListener("touchstart", e=>{ touchStartX = e.touches[0].clientX; }, {passive:true});
   track.addEventListener("touchend", e=>{
@@ -3278,7 +3185,7 @@ async function compressImageFile(file, maxDim, quality){
     reader.onload = ()=>{
       const img = new Image();
       img.onload = ()=>{
-        
+
         let w = img.width, h = img.height;
         const scale = Math.min(1, maxDim / Math.max(w, h));
         w = Math.round(w * scale);
@@ -3307,7 +3214,7 @@ async function handleImageUpload(files){
   for(const file of files){
     if(!file.type.startsWith("image/")){ continue; }
     try{
-      
+
       const { dataUrl, width, height } = await compressImageFile(file, 1600, 0.85);
       const now = new Date().toISOString();
       state.images.push({
@@ -3333,11 +3240,11 @@ async function handleImageUpload(files){
       toast("Added " + added + " image" + (added===1?"":"s") + ".");
       checkAutoBackup();
     }catch(err){
-      
+
       console.error("Storage quota exceeded:", err);
       toast("Storage full! Auto-downloading backup...");
-      exportImagesBackup(true); 
-      
+      exportImagesBackup(true);
+
       state.images = state.images.slice(-3);
       try{ saveState(); renderImages(); }catch(e){}
       toast("Backup downloaded. Delete some images or import backup on a device with more space.");
@@ -3353,7 +3260,7 @@ function checkAutoBackup(){
   const currentCount = state.images.length;
   const lastCount = s.imageBackupLastCount || 0;
   const threshold = Math.max(1, s.imageBackupThreshold || 10);
-  
+
   if(currentCount - lastCount >= threshold){
     exportImagesBackup(false);
   }
@@ -3382,7 +3289,6 @@ function exportImagesBackup(silent){
     if(!silent) toast("Backup downloaded (" + state.images.length + " images).");
     else toast("Auto-backup: " + state.images.length + " images saved to your Downloads folder.");
 
-    
     if(state.settings.imageDeleteAfterBackup){
       setTimeout(()=>{
         confirmModal("Backup saved. Delete uploaded images to free up space?", ()=>{
@@ -3474,7 +3380,6 @@ function renderImages(){
   if(!container) return;
   container.innerHTML = "";
 
-  
   const statusEl = $("#image-backup-status");
   if(statusEl){
     const s = state.settings;
@@ -3548,9 +3453,6 @@ function renderImages(){
   });
 }
 
-/* ---------------------------------------------------------
-   FB-STYLE PROFILE VIEW
---------------------------------------------------------- */
 function renderProfileView(){
   const p = state.profile;
 
@@ -3741,18 +3643,16 @@ function renderAll(){
 }
 
 function wireEvents(){
-  
+
   $("#setup-finish").addEventListener("click", ()=>finishSetup(false));
   $("#setup-skip").addEventListener("click", ()=>finishSetup(true));
 
-  
   $all(".nav-item").forEach(btn=> btn.addEventListener("click", ()=>switchView(btn.dataset.view)));
   $("#hamburger").addEventListener("click", openSidebarMobile);
   $("#scrim").addEventListener("click", closeSidebarMobile);
   $("#header-settings").addEventListener("click", ()=>switchView("settings"));
   $("#theme-toggle").addEventListener("click", toggleTheme);
 
-  
   $("#mini-profile-btn").addEventListener("click", ()=>switchView("profile"));
   $("#brand").addEventListener("click", openEditProfileModal);
   $("#brand").addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openEditProfileModal(); } });
@@ -3762,12 +3662,10 @@ function wireEvents(){
   $("#avatar-file").addEventListener("change", (e)=>{ const f=e.target.files[0]; if(f) handleAvatarUpload(f); e.target.value=""; });
   $("#cover-file").addEventListener("change", (e)=>{ const f=e.target.files[0]; if(f) handleCoverUpload(f); e.target.value=""; });
 
-  
   tickClock();
   setInterval(tickClock, 1000);
-  setInterval(checkNotifications, 60000); // check every minute
+  setInterval(checkNotifications, 60000);
 
-  // Test notification button
   document.addEventListener("click", e => {
     if (e.target.id === "btn-test-notif") {
       requestNotifPermission(ok => {
@@ -3777,12 +3675,10 @@ function wireEvents(){
     }
   });
 
-  
   $("#modal-close").addEventListener("click", closeModal);
   $("#modal-overlay").addEventListener("click", (e)=>{ if(e.target.id==="modal-overlay") closeModal(); });
   document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
 
-  
   document.addEventListener("click", (e)=>{
     const actionBtn = e.target.closest("[data-action]");
     if(!actionBtn) return;
@@ -3799,7 +3695,6 @@ function wireEvents(){
     else if(action==="set-api-key") promptForApiKey().then(()=>toast("API key saved.")).catch(()=>{});
   });
 
-  
   $all("#task-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
     $all("#task-filters .tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active"); taskFilter = t.dataset.filter; renderTasks();
@@ -3807,25 +3702,20 @@ function wireEvents(){
   $("#task-search").addEventListener("input", (e)=>{ taskSearchTerm = e.target.value; renderTasks(); });
   $("#task-sort").addEventListener("change", renderTasks);
 
-  
   $all("#file-filters .tab").forEach(t=> t.addEventListener("click", ()=>{
     $all("#file-filters .tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active"); fileFilter = t.dataset.cat; renderFiles();
   }));
 
-  
   $("#note-search").addEventListener("input", (e)=>{ noteSearchTerm = e.target.value; renderNotes(); });
 
-  
   $("#grades-subject-select").addEventListener("change", (e)=>renderGradePanel(e.target.value));
 
-  
   $all("#focus-modes .tab").forEach(t=> t.addEventListener("click", ()=>setFocusMode(t.dataset.mode)));
   $("#timer-start").addEventListener("click", startTimer);
   $("#timer-reset").addEventListener("click", resetTimer);
   $("#timer-skip").addEventListener("click", skipTimer);
 
-  
   $("#global-search").addEventListener("input", (e)=>runSearch(e.target.value.trim()));
   document.addEventListener("click", (e)=>{
     if(!e.target.closest(".topbar-search") && !e.target.closest("#search-results")){
@@ -3833,11 +3723,9 @@ function wireEvents(){
     }
   });
 
-  
   $("#btn-save-settings").addEventListener("click", saveSettingsForm);
   $("#btn-export").addEventListener("click", exportData);
-  
-  
+
   const btnPdf = $("#btn-export-pdf");
   if(btnPdf) btnPdf.addEventListener("click", exportDataPdf);
   const btnSession = $("#btn-save-session");
@@ -3846,7 +3734,6 @@ function wireEvents(){
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
 
-  
   const btnAddImg = $("#btn-add-image");
   const imgInput  = $("#image-upload-input");
   if(btnAddImg && imgInput){
@@ -3862,7 +3749,6 @@ function wireEvents(){
     btnBackupNow.addEventListener("click", ()=>exportImagesBackup(false));
   }
 
-  
   const dz = $("#image-dropzone");
   if(dz){
     dz.addEventListener("click", ()=>$("#image-upload-input").click());
@@ -3878,7 +3764,6 @@ function wireEvents(){
     });
   }
 
-  
   const viewImages = $("#view-images");
   if(viewImages){
     viewImages.addEventListener("dragover", (e)=>{ e.preventDefault(); if(dz) dz.classList.add("drag-over"); });
