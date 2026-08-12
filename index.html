@@ -8,7 +8,7 @@
 </head>
 <body>
 
- <div id="setup-screen" class="setup-screen hidden">
+<div id="setup-screen" class="setup-screen hidden">
   <div class="setup-card">
     <div class="setup-mark">C</div>
     <h1>Set up your dashboard</h1>
@@ -16,7 +16,7 @@
 
     <div class="setup-step" data-step="1">
       <label>Your name</label>
-      <input type="text" id="setup-name" placeholder="e.g. Neil Steve" autocomplete="off">
+      <input type="text" id="setup-name" placeholder="e.g. neilsunday" autocomplete="off">
       <label>School</label>
       <input type="text" id="setup-school" placeholder="e.g. State University" autocomplete="off">
       <label>Program</label>
@@ -32,9 +32,113 @@
   </div>
 </div>
 
- <div id="app" class="app hidden">
+<div id="onboarding-overlay" class="onboarding-overlay hidden">
+  <div class="ob-track" id="ob-track">
 
-   <aside class="sidebar" id="sidebar">
+    
+    <div class="ob-card">
+      <div class="ob-icon">🎓</div>
+      <h2 class="ob-title">Welcome to mySchedule</h2>
+      <p class="ob-body">Your all-in-one student dashboard — schedule, tasks, grades, notes, and images. Everything in one place, saved on your device.</p>
+      <ul class="ob-list">
+        <li>📅 View your full weekly class schedule</li>
+        <li>✅ Track assignments and deadlines</li>
+        <li>📊 Monitor your grades per subject</li>
+        <li>🖼️ Store screenshots and notes</li>
+      </ul>
+    </div>
+
+    
+    <div class="ob-card">
+      <div class="ob-icon">📄</div>
+      <h2 class="ob-title">Import Your Schedule</h2>
+      <p class="ob-body">Upload your COR (Certificate of Registration) PDF or a screenshot of your schedule — the app reads it automatically.</p>
+      <div class="ob-steps">
+        <div class="ob-step"><span class="ob-num">1</span><span>Go to <strong>Schedule</strong> tab → tap <strong>Import from Image</strong></span></div>
+        <div class="ob-step"><span class="ob-num">2</span><span>Upload your <strong>COR PDF</strong> or a photo of your schedule</span></div>
+        <div class="ob-step"><span class="ob-num">3</span><span>Review detected classes, edit if needed, then tap <strong>Import Selected</strong></span></div>
+      </div>
+      <p class="ob-note">💡 Works even without an API key — the app reads PDF text automatically.</p>
+    </div>
+
+    
+    <div class="ob-card">
+      <div class="ob-icon">🤖</div>
+      <h2 class="ob-title">Unlock AI Features</h2>
+      <p class="ob-body">Connect a free AI API key to get smarter image reading, grade extraction from photos, and subject detection from enrollment forms.</p>
+      <div class="ob-compare">
+        <div class="ob-col">
+          <div class="ob-col-head">Without API key</div>
+          <div class="ob-feat">✅ Import schedule from PDF</div>
+          <div class="ob-feat">✅ Manual entry for all tabs</div>
+          <div class="ob-feat">✅ Full app — tasks, grades, notes</div>
+          <div class="ob-feat ob-no">❌ Photo-to-schedule (images)</div>
+          <div class="ob-feat ob-no">❌ Photo-to-grades</div>
+        </div>
+        <div class="ob-col">
+          <div class="ob-col-head ob-col-head-ai">With free API key</div>
+          <div class="ob-feat">✅ Everything above</div>
+          <div class="ob-feat ob-yes">✅ Scan schedule from photo</div>
+          <div class="ob-feat ob-yes">✅ Extract grades from image</div>
+          <div class="ob-feat ob-yes">✅ Detect subjects from COR photo</div>
+          <div class="ob-feat ob-yes">✅ Better accuracy on any image</div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="ob-card">
+      <div class="ob-icon">🔑</div>
+      <h2 class="ob-title">Get a Free API Key</h2>
+      <p class="ob-body">These providers are free — no credit card needed. Sign up, copy your key, paste it in the app.</p>
+      <div class="ob-providers">
+        <a class="ob-provider" href="https://aistudio.google.com/apikey" target="_blank">
+          <span class="ob-provider-name">Google Gemini</span>
+          <span class="ob-provider-tag">Recommended • Best for PDFs</span>
+          <span class="ob-provider-url">aistudio.google.com/apikey</span>
+        </a>
+        <a class="ob-provider" href="https://console.groq.com/keys" target="_blank">
+          <span class="ob-provider-name">Groq</span>
+          <span class="ob-provider-tag">Very fast • Great for text</span>
+          <span class="ob-provider-url">console.groq.com/keys</span>
+        </a>
+        <a class="ob-provider" href="https://openrouter.ai/keys" target="_blank">
+          <span class="ob-provider-name">OpenRouter</span>
+          <span class="ob-provider-tag">Access to many free models</span>
+          <span class="ob-provider-url">openrouter.ai/keys</span>
+        </a>
+      </div>
+      <p class="ob-note">After getting your key: tap <strong>🔑 API Key</strong> in any import modal → paste → Save.</p>
+    </div>
+
+    
+    <div class="ob-card">
+      <div class="ob-icon">🚀</div>
+      <h2 class="ob-title">You're All Set!</h2>
+      <p class="ob-body">Start building your semester dashboard. Here are a few tips to get the most out of the app:</p>
+      <div class="ob-tips">
+        <div class="ob-tip"><span class="ob-tip-icon">💾</span><div><strong>Save Session end-of-term</strong><br><span>Settings → Save Session (PDF + Clear) exports everything then gives you a fresh start for next term.</span></div></div>
+        <div class="ob-tip"><span class="ob-tip-icon">📦</span><div><strong>Back up your data</strong><br><span>Settings → Export Backup (JSON) — save to Google Drive so you can restore on any device.</span></div></div>
+        <div class="ob-tip"><span class="ob-tip-icon">🌙</span><div><strong>Switch themes anytime</strong><br><span>Settings → Appearance — light, dark, or follow your system automatically.</span></div></div>
+      </div>
+      <button class="btn btn-primary ob-done-btn" id="ob-done">Start using the app →</button>
+    </div>
+
+  </div>
+
+  
+  <div class="ob-nav">
+    <button class="ob-arrow" id="ob-prev">&#8592;</button>
+    <div class="ob-dots" id="ob-dots"></div>
+    <button class="ob-arrow" id="ob-next">&#8594;</button>
+  </div>
+  <button class="ob-skip-btn" id="ob-skip">Skip</button>
+</div>
+
+<div id="app" class="app hidden">
+
+  
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <span class="brand-mark">C</span>
       <span class="brand-name">Coursework</span>
@@ -64,7 +168,8 @@
 
   <div class="scrim" id="scrim"></div>
 
-   <div class="main">
+  
+  <div class="main">
     <header class="topbar">
       <button class="icon-btn hamburger" id="hamburger" aria-label="Open menu">
         <span class="nav-ico" data-ico="menu"></span>
@@ -93,7 +198,8 @@
 
     <main class="content" id="content">
 
-       <section class="view active" id="view-dashboard">
+      
+      <section class="view active" id="view-dashboard">
         <div class="view-head">
           <div>
             <h1 id="greeting">Good day</h1>
@@ -153,7 +259,8 @@
         </div>
       </section>
 
-       <section class="view" id="view-schedule">
+      
+      <section class="view" id="view-schedule">
         <div class="view-head">
           <div><h1>Schedule</h1><p class="muted">Your weekly class timetable.</p></div>
           <div class="view-head-actions">
@@ -164,7 +271,8 @@
         <div class="week-grid" id="week-grid"></div>
       </section>
 
-       <section class="view" id="view-assignments">
+      
+      <section class="view" id="view-assignments">
         <div class="view-head">
           <div><h1>Assignments</h1><p class="muted">Track tasks, projects, quizzes, and exams.</p></div>
           <button class="btn btn-primary" data-action="add-task">Add Task</button>
@@ -190,7 +298,8 @@
         <div class="list" id="task-list"></div>
       </section>
 
-       <section class="view" id="view-subjects">
+      
+      <section class="view" id="view-subjects">
         <div class="view-head">
           <div><h1>Subjects</h1><p class="muted">All your enrolled subjects in one place.</p></div>
           <div class="view-head-actions">
@@ -201,7 +310,8 @@
         <div class="grid-cards" id="subject-list"></div>
       </section>
 
-       <section class="view" id="view-grades">
+      
+      <section class="view" id="view-grades">
         <div class="view-head">
           <div><h1>Grades</h1><p class="muted">Track category weights and your running average.</p></div>
           <div class="view-head-actions">
@@ -212,7 +322,8 @@
         <div id="grades-panel"></div>
       </section>
 
-       <section class="view" id="view-focus">
+      
+      <section class="view" id="view-focus">
         <div class="view-head">
           <div><h1>Focus</h1><p class="muted">Pomodoro-style timer for deep work sessions.</p></div>
         </div>
@@ -247,7 +358,8 @@
         </div>
       </section>
 
-       <section class="view" id="view-notes">
+      
+      <section class="view" id="view-notes">
         <div class="view-head">
           <div><h1>Notes</h1><p class="muted">Quick notes tied to your subjects.</p></div>
           <button class="btn btn-primary" data-action="add-note">Add Note</button>
@@ -258,7 +370,8 @@
         <div class="grid-cards" id="note-list"></div>
       </section>
 
-       <section class="view" id="view-files">
+      
+      <section class="view" id="view-files">
         <div class="view-head">
           <div><h1>Files</h1><p class="muted">Save links to modules, references, and resources.</p></div>
           <button class="btn btn-primary" data-action="add-file">Add Resource</button>
@@ -276,7 +389,8 @@
         <div class="list" id="file-list"></div>
       </section>
 
-       <section class="view" id="view-images">
+      
+      <section class="view" id="view-images">
         <div class="view-head">
           <div><h1>Images</h1><p class="muted">Save screenshots, photos of notes, whiteboard captures, and other images.</p></div>
           <div class="view-head-actions">
@@ -296,7 +410,8 @@
         <div class="image-grid" id="image-list"></div>
       </section>
 
-       <section class="view" id="view-settings">
+      
+      <section class="view" id="view-settings">
         <div class="view-head">
           <div><h1>Settings</h1><p class="muted">Customize your profile and how the app behaves.</p></div>
         </div>
@@ -408,7 +523,8 @@
             <div class="card-body">
               <p class="muted small">Everything is stored locally in your browser. Export a full backup (JSON) to transfer to another device, or print your info as PDF.</p>
               <div class="quick-actions">
-                <button class="btn btn-primary" id="btn-export">Export Backup (JSON)</button>
+                <button class="btn btn-primary" id="btn-save-session">Save Session (PDF + Clear)</button>
+                <button class="btn btn-outline" id="btn-export">Export Backup (JSON)</button>
                 <button class="btn btn-outline" id="btn-import">Import Backup (JSON)</button>
                 <button class="btn btn-outline" id="btn-export-pdf">Export as PDF</button>
                 <button class="btn btn-outline" data-action="import-image">Import from Image / PDF</button>
@@ -429,7 +545,7 @@
   </div>
 </div>
 
- <div class="modal-overlay hidden" id="modal-overlay">
+<div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal" id="modal-box" role="dialog" aria-modal="true">
     <div class="modal-head">
       <h2 id="modal-title">Title</h2>
