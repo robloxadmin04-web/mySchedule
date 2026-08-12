@@ -3241,6 +3241,35 @@ function wireEvents(){
   if(btnBackupNow){
     btnBackupNow.addEventListener("click", ()=>exportImagesBackup(false));
   }
+
+  // Drag & drop on the dropzone
+  const dz = $("#image-dropzone");
+  if(dz){
+    dz.addEventListener("click", ()=>$("#image-upload-input").click());
+    ["dragenter","dragover"].forEach(evt=>
+      dz.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); dz.classList.add("drag-over"); })
+    );
+    ["dragleave","drop"].forEach(evt=>
+      dz.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); dz.classList.remove("drag-over"); })
+    );
+    dz.addEventListener("drop", (e)=>{
+      const files = e.dataTransfer?.files;
+      if(files && files.length) handleImageUpload(files);
+    });
+  }
+
+  // Also allow dropping anywhere on the Images view
+  const viewImages = $("#view-images");
+  if(viewImages){
+    viewImages.addEventListener("dragover", (e)=>{ e.preventDefault(); if(dz) dz.classList.add("drag-over"); });
+    viewImages.addEventListener("dragleave", (e)=>{ if(!viewImages.contains(e.relatedTarget) && dz) dz.classList.remove("drag-over"); });
+    viewImages.addEventListener("drop", (e)=>{
+      e.preventDefault();
+      if(dz) dz.classList.remove("drag-over");
+      const files = e.dataTransfer?.files;
+      if(files && files.length) handleImageUpload(files);
+    });
+  }
 }
 
 /* =========================================================
