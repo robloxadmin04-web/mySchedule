@@ -36,7 +36,12 @@ function defaultState(){
       focusDur:25, shortDur:5, longDur:15, sessionsBeforeLong:4,
       theme:"light", density:"comfortable", radius:"soft", reduceMotion:false,
       classTypes: CLASS_TYPES_DEFAULT.slice(),
-      widgets:{ nextclass:true, progress:true, todayschedule:true, todaytasks:true, deadlines:true, focusstats:true, quickactions:true }
+      widgets:{ nextclass:true, progress:true, todayschedule:true, todaytasks:true, deadlines:true, focusstats:true, quickactions:true },
+      // Image auto-backup
+      imageAutoBackup: true,
+      imageBackupThreshold: 10,
+      imageBackupLastCount: 0,
+      imageDeleteAfterBackup: false
     },
     classes:[],
     tasks:[],
@@ -1165,6 +1170,11 @@ function fillSettingsForm(){
   $("#s-focusdur").value = s.focusDur; $("#s-shortdur").value = s.shortDur; $("#s-longdur").value = s.longDur; $("#s-sessionsbeforelong").value = s.sessionsBeforeLong;
   $("#s-theme").value = s.theme; $("#s-density").value = s.density; $("#s-radius").value = s.radius; $("#s-reducemotion").checked = s.reduceMotion;
 
+  // Image auto-backup settings
+  const iab = $("#s-imageautobackup"); if(iab) iab.checked = s.imageAutoBackup !== false;
+  const ibt = $("#s-imagebackupthreshold"); if(ibt) ibt.value = s.imageBackupThreshold || 10;
+  const idab = $("#s-imagedeleteafterbackup"); if(idab) idab.checked = !!s.imageDeleteAfterBackup;
+
   // Instant apply for appearance controls
   ["s-theme","s-density","s-radius"].forEach(id=>{
     const el = $("#"+id);
@@ -1215,6 +1225,11 @@ function saveSettingsForm(){
   s.focusDur = Number($("#s-focusdur").value)||25; s.shortDur = Number($("#s-shortdur").value)||5; s.longDur = Number($("#s-longdur").value)||15;
   s.sessionsBeforeLong = Number($("#s-sessionsbeforelong").value)||4;
   s.theme = $("#s-theme").value; s.density = $("#s-density").value; s.radius = $("#s-radius").value; s.reduceMotion = $("#s-reducemotion").checked;
+
+  // Image auto-backup
+  const iab = $("#s-imageautobackup"); if(iab) s.imageAutoBackup = iab.checked;
+  const ibt = $("#s-imagebackupthreshold"); if(ibt) s.imageBackupThreshold = Math.max(1, Number(ibt.value)||10);
+  const idab = $("#s-imagedeleteafterbackup"); if(idab) s.imageDeleteAfterBackup = idab.checked;
 
   $all("#widget-toggles input[type=checkbox]").forEach(cb=>{
     s.widgets[cb.dataset.widgetKey] = cb.checked;
@@ -2861,13 +2876,78 @@ async function handleImageUpload(files){
       saveState();
       renderImages();
       toast("Added " + added + " image" + (added===1?"":"s") + ".");
+      checkAutoBackup();
     }catch(err){
-      // Likely localStorage quota exceeded
-      state.images = state.images.slice(0, state.images.length - added);
-      toast("Storage full! Delete some images or reduce quality.");
+      // Likely localStorage quota exceeded — auto-export as safety net
+      console.error("Storage quota exceeded:", err);
+      toast("Storage full! Auto-downloading backup...");
+      exportImagesBackup(true); // force export
+      // Keep only the last few images to save space
+      state.images = state.images.slice(-3);
+      try{ saveState(); renderImages(); }catch(e){}
+      toast("Backup downloaded. Delete some images or import backup on a device with more space.");
     }
   } else {
     toast("No valid images uploaded.");
+  }
+}
+
+/**
+ * Auto-backup: when image count grows past threshold, export a JSON backup.
+ */
+function checkAutoBackup(){
+  const s = state.settings;
+  if(!s.imageAutoBackup) return;
+  const currentCount = state.images.length;
+  const lastCount = s.imageBackupLastCount || 0;
+  const threshold = Math.max(1, s.imageBackupThreshold || 10);
+  // Trigger when we've added `threshold` new images since the last backup
+  if(currentCount - lastCount >= threshold){
+    exportImagesBackup(false);
+  }
+}
+
+/**
+ * Exports images (+ full app state) as a JSON file.
+ * If `silent` is false, shows toast. Updates last backup count.
+ */
+function exportImagesBackup(silent){
+  try{
+    const payload = {
+      _type: "mySchedule-backup",
+      _version: 1,
+      _exportedAt: new Date().toISOString(),
+      ...state
+    };
+    const blob = new Blob([JSON.stringify(payload)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+    a.href = url;
+    a.download = "mySchedule-backup-" + stamp + ".json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    state.settings.imageBackupLastCount = state.images.length;
+    saveState();
+
+    if(!silent) toast("Backup downloaded (" + state.images.length + " images).");
+    else toast("Auto-backup: " + state.images.length + " images saved to your Downloads folder.");
+
+    // Optional: delete images after backup
+    if(state.settings.imageDeleteAfterBackup){
+      setTimeout(()=>{
+        confirmModal("Backup saved. Delete uploaded images to free up space?", ()=>{
+          state.images = [];
+          state.settings.imageBackupLastCount = 0;
+          saveState(); renderImages();
+          toast("Images cleared. Restore from backup file anytime.");
+        });
+      }, 800);
+    }
+  }catch(err){
+    console.error("Backup failed:", err);
+    toast("Backup failed: " + (err.message||"unknown error"));
   }
 }
 
@@ -2945,6 +3025,30 @@ function renderImages(){
   const container = $("#image-list");
   if(!container) return;
   container.innerHTML = "";
+
+  // Update backup status banner
+  const statusEl = $("#image-backup-status");
+  if(statusEl){
+    const s = state.settings;
+    const total = state.images.length;
+    const lastCount = s.imageBackupLastCount || 0;
+    const threshold = s.imageBackupThreshold || 10;
+    const newSinceBackup = total - lastCount;
+    const remaining = threshold - newSinceBackup;
+    statusEl.innerHTML = "";
+    if(s.imageAutoBackup && total > 0){
+      const msg = remaining > 0
+        ? "Auto-backup in " + remaining + " more image" + (remaining===1?"":"s") + " (" + newSinceBackup + "/" + threshold + " since last backup)."
+        : "Auto-backup ready — upload another image or click Backup Now.";
+      statusEl.appendChild(el("div", {class:"backup-banner"}, [
+        el("span", {class:"small"}, [msg])
+      ]));
+    } else if(!s.imageAutoBackup && total > 0){
+      statusEl.appendChild(el("div", {class:"backup-banner backup-banner-warn"}, [
+        el("span", {class:"small"}, ["Auto-backup is OFF. Enable it in Settings to prevent losing images."])
+      ]));
+    }
+  }
 
   const q = _imageSearchQuery.trim().toLowerCase();
   let items = state.images.slice().sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
@@ -3108,6 +3212,10 @@ function wireEvents(){
   const imgSearch = $("#image-search");
   if(imgSearch){
     imgSearch.addEventListener("input", (e)=>{ _imageSearchQuery = e.target.value; renderImages(); });
+  }
+  const btnBackupNow = $("#btn-backup-images-now");
+  if(btnBackupNow){
+    btnBackupNow.addEventListener("click", ()=>exportImagesBackup(false));
   }
 }
 
