@@ -8,8 +8,7 @@
 </head>
 <body>
 
-<!-- ============ FIRST TIME SETUP ============ -->
-<div id="setup-screen" class="setup-screen hidden">
+ <div id="setup-screen" class="setup-screen hidden">
   <div class="setup-card">
     <div class="setup-mark">C</div>
     <h1>Set up your dashboard</h1>
@@ -33,11 +32,9 @@
   </div>
 </div>
 
-<!-- ============ APP SHELL ============ -->
-<div id="app" class="app hidden">
+ <div id="app" class="app hidden">
 
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
+   <aside class="sidebar" id="sidebar">
     <div class="brand">
       <span class="brand-mark">C</span>
       <span class="brand-name">Coursework</span>
@@ -67,8 +64,7 @@
 
   <div class="scrim" id="scrim"></div>
 
-  <!-- Main -->
-  <div class="main">
+   <div class="main">
     <header class="topbar">
       <button class="icon-btn hamburger" id="hamburger" aria-label="Open menu">
         <span class="nav-ico" data-ico="menu"></span>
@@ -97,8 +93,7 @@
 
     <main class="content" id="content">
 
-      <!-- ===================== DASHBOARD ===================== -->
-      <section class="view active" id="view-dashboard">
+       <section class="view active" id="view-dashboard">
         <div class="view-head">
           <div>
             <h1 id="greeting">Good day</h1>
@@ -158,8 +153,7 @@
         </div>
       </section>
 
-      <!-- ===================== SCHEDULE ===================== -->
-      <section class="view" id="view-schedule">
+       <section class="view" id="view-schedule">
         <div class="view-head">
           <div><h1>Schedule</h1><p class="muted">Your weekly class timetable.</p></div>
           <div class="view-head-actions">
@@ -170,8 +164,7 @@
         <div class="week-grid" id="week-grid"></div>
       </section>
 
-      <!-- ===================== ASSIGNMENTS ===================== -->
-      <section class="view" id="view-assignments">
+       <section class="view" id="view-assignments">
         <div class="view-head">
           <div><h1>Assignments</h1><p class="muted">Track tasks, projects, quizzes, and exams.</p></div>
           <button class="btn btn-primary" data-action="add-task">Add Task</button>
@@ -197,8 +190,7 @@
         <div class="list" id="task-list"></div>
       </section>
 
-      <!-- ===================== SUBJECTS ===================== -->
-      <section class="view" id="view-subjects">
+       <section class="view" id="view-subjects">
         <div class="view-head">
           <div><h1>Subjects</h1><p class="muted">All your enrolled subjects in one place.</p></div>
           <div class="view-head-actions">
@@ -209,8 +201,7 @@
         <div class="grid-cards" id="subject-list"></div>
       </section>
 
-      <!-- ===================== GRADES ===================== -->
-      <section class="view" id="view-grades">
+       <section class="view" id="view-grades">
         <div class="view-head">
           <div><h1>Grades</h1><p class="muted">Track category weights and your running average.</p></div>
           <div class="view-head-actions">
@@ -221,8 +212,7 @@
         <div id="grades-panel"></div>
       </section>
 
-      <!-- ===================== FOCUS ===================== -->
-      <section class="view" id="view-focus">
+       <section class="view" id="view-focus">
         <div class="view-head">
           <div><h1>Focus</h1><p class="muted">Pomodoro-style timer for deep work sessions.</p></div>
         </div>
@@ -257,8 +247,7 @@
         </div>
       </section>
 
-      <!-- ===================== NOTES ===================== -->
-      <section class="view" id="view-notes">
+       <section class="view" id="view-notes">
         <div class="view-head">
           <div><h1>Notes</h1><p class="muted">Quick notes tied to your subjects.</p></div>
           <button class="btn btn-primary" data-action="add-note">Add Note</button>
@@ -269,8 +258,7 @@
         <div class="grid-cards" id="note-list"></div>
       </section>
 
-      <!-- ===================== FILES ===================== -->
-      <section class="view" id="view-files">
+       <section class="view" id="view-files">
         <div class="view-head">
           <div><h1>Files</h1><p class="muted">Save links to modules, references, and resources.</p></div>
           <button class="btn btn-primary" data-action="add-file">Add Resource</button>
@@ -288,8 +276,7 @@
         <div class="list" id="file-list"></div>
       </section>
 
-      <!-- ===================== IMAGES ===================== -->
-      <section class="view" id="view-images">
+       <section class="view" id="view-images">
         <div class="view-head">
           <div><h1>Images</h1><p class="muted">Save screenshots, photos of notes, whiteboard captures, and other images.</p></div>
           <div class="view-head-actions">
@@ -309,8 +296,7 @@
         <div class="image-grid" id="image-list"></div>
       </section>
 
-      <!-- ===================== SETTINGS ===================== -->
-      <section class="view" id="view-settings">
+       <section class="view" id="view-settings">
         <div class="view-head">
           <div><h1>Settings</h1><p class="muted">Customize your profile and how the app behaves.</p></div>
         </div>
@@ -443,8 +429,7 @@
   </div>
 </div>
 
-<!-- ============ MODAL ROOT ============ -->
-<div class="modal-overlay hidden" id="modal-overlay">
+ <div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal" id="modal-box" role="dialog" aria-modal="true">
     <div class="modal-head">
       <h2 id="modal-title">Title</h2>
