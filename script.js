@@ -15,19 +15,19 @@ const WIDGET_LABELS = {
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
-// ── Notification UI helpers ──────────────────────────────────────────────────
+// â”€â”€ Notification UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function updateNotifPermStatus() {
   const el = $("#notif-perm-status");
   if (!el) return;
   if (!("Notification" in window)) { el.textContent = "Browser notifications not supported."; return; }
   const p = Notification.permission;
-  el.textContent = p === "granted" ? "✅ Permission granted — notifications are active."
-    : p === "denied" ? "❌ Permission blocked. Please allow in browser site settings."
-    : "⚠️ Permission not yet granted. Enable notifications above and save to request.";
+  el.textContent = p === "granted" ? "âœ… Permission granted â€” notifications are active."
+    : p === "denied" ? "âŒ Permission blocked. Please allow in browser site settings."
+    : "âš ï¸ Permission not yet granted. Enable notifications above and save to request.";
 }
 
-// ── Philippine College Grade System ──────────────────────────────────────────
-// Standard 1.0–5.0 transmutation (CHED-aligned)
+// â”€â”€ Philippine College Grade System â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Standard 1.0â€“5.0 transmutation (CHED-aligned)
 const PH_GRADE_TABLE = [
   { min: 97, max: 100, equiv: 1.0, desc: "Excellent" },
   { min: 94, max: 96,  equiv: 1.25, desc: "Excellent" },
@@ -49,7 +49,7 @@ function percentToPhGrade(pct) {
   return PH_GRADE_TABLE[PH_GRADE_TABLE.length - 1];
 }
 
-// ── Notifications ─────────────────────────────────────────────────────────────
+// â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _notifFired = new Set();
 
 function requestNotifPermission(cb) {
@@ -89,7 +89,7 @@ function checkNotifications() {
     if (diffMin > 0 && diffMin <= mins) {
       const subj = state.subjects.find(x => x.id === cls.subject);
       const name = subj ? subj.name : (cls.subject || "Class");
-      const room = cls.location ? ` • ${cls.location}` : "";
+      const room = cls.location ? ` â€¢ ${cls.location}` : "";
       sendNotif(
         `Class in ${Math.ceil(diffMin)} min`,
         `${name} at ${fmtTime(cls.start)}${room}`,
@@ -107,7 +107,7 @@ function checkNotifications() {
     if (diffMin > 0 && diffMin <= deadlineMins) {
       sendNotif(
         `Deadline soon: ${task.title}`,
-        `Due in ${Math.ceil(diffMin)} min${task.subject ? " • " + task.subject : ""}`,
+        `Due in ${Math.ceil(diffMin)} min${task.subject ? " â€¢ " + task.subject : ""}`,
         `task-${task.id}-deadline`
       );
     }
@@ -126,7 +126,8 @@ function checkNotifications() {
 function defaultState(){
   return {
     setupDone:false,
-    profile:{ name:"Student", studentId:"", program:"My Program", year:"", section:"", school:"My College", email:"" },
+    profile:{ name:"Student", studentId:"", program:"My Program", year:"", section:"", school:"My College", email:"", avatar:"", cover:"", bio:"", links:[] },
+    brand:{ name:"Coursework", logo:"" },
     settings:{
       weekStart:"mon", timeFormat:"24", classDuration:60, defaultClassType:"Face to Face",
       defaultPriority:"Medium", defaultStatus:"Not Started", taskSort:"due",
@@ -193,7 +194,7 @@ function saveState(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }catch(e){
     console.error("Failed to save state", e);
-    toast("Could not save — storage may be full.");
+    toast("Could not save â€” storage may be full.");
   }
 }
 
@@ -285,6 +286,22 @@ function tickClock(){
 }
 
 /* ---------------------------------------------------------
+   BRANDING (app name / logo)
+--------------------------------------------------------- */
+function applyBranding(){
+  const b = state.brand || { name:"Coursework", logo:"" };
+  document.title = (b.name || "Coursework") + " - Student Dashboard";
+  $("#brand-name").textContent = b.name || "Coursework";
+  const mark = $("#brand-mark");
+  if(b.logo){
+    mark.innerHTML = "";
+    mark.appendChild(el("img", {src:b.logo, alt:"Logo"}));
+  } else {
+    mark.textContent = (b.name || "C").trim().charAt(0).toUpperCase() || "C";
+  }
+}
+
+/* ---------------------------------------------------------
    NAVIGATION
 --------------------------------------------------------- */
 function switchView(view){
@@ -293,6 +310,7 @@ function switchView(view){
   closeSidebarMobile();
   if(view === "grades") renderGrades();
   if(view === "images") renderImages();
+  if(view === "profile") renderProfileView();
   window.scrollTo({top:0, behavior: state.settings.reduceMotion ? "auto":"smooth"});
 }
 
@@ -412,7 +430,7 @@ function select(options, value){
   return s;
 }
 function subjectSelectOptions(){
-  return [{value:"", label:"— No subject —"}, ...state.subjects.map(s=>({value:s.id, label:s.name}))];
+  return [{value:"", label:"â€” No subject â€”"}, ...state.subjects.map(s=>({value:s.id, label:s.name}))];
 }
 
 /* =========================================================
@@ -500,7 +518,7 @@ function renderSchedule(){
       dayClasses.forEach(c=>{
         const chip = el("div", {class:"class-chip", onclick:()=>openClassModal(c)}, [
           el("div", {class:"cc-subject"}, [subjectName(c.subject)]),
-          el("div", {class:"cc-meta"}, [`${fmtTime(c.start)}–${fmtTime(c.end)} · ${c.type}${c.location? " · "+c.location:""}`])
+          el("div", {class:"cc-meta"}, [`${fmtTime(c.start)}â€“${fmtTime(c.end)} Â· ${c.type}${c.location? " Â· "+c.location:""}`])
         ]);
         body.appendChild(chip);
       });
@@ -637,7 +655,7 @@ function renderTasks(){
 
 function emptyState(title, sub){
   return el("div", {class:"empty-state"}, [
-    el("div", {class:"empty-mark"}, ["–"]),
+    el("div", {class:"empty-mark"}, ["â€“"]),
     el("p", {}, [title]),
     sub ? el("p", {class:"small"}, [sub]) : null
   ]);
@@ -772,12 +790,12 @@ function renderGradePanel(subjectId){
     const phG = percentToPhGrade(grade);
     const phTarget = percentToPhGrade(record.targetGrade!=null?record.targetGrade:state.settings.target);
     return [
-      statCard("Grade Equiv.", phG ? phG.equiv.toFixed(2) + " (" + phG.desc + ")" : "—"),
-      statCard("Target Equiv.", phTarget ? phTarget.equiv.toFixed(2) : "—"),
+      statCard("Grade Equiv.", phG ? phG.equiv.toFixed(2) + " (" + phG.desc + ")" : "â€”"),
+      statCard("Target Equiv.", phTarget ? phTarget.equiv.toFixed(2) : "â€”"),
     ];
   })() : [];
   const summary = el("div", {class:"grade-summary"}, [
-    statCard("Current Grade", grade!=null ? grade.toFixed(dec)+"%" : "—"),
+    statCard("Current Grade", grade!=null ? grade.toFixed(dec)+"%" : "â€”"),
     statCard("Target Grade", (record.targetGrade!=null?record.targetGrade:state.settings.target)+"%"),
     statCard("Passing Grade", passing+"%"),
     statCard("Weight Used", weightTotal+"%"),
@@ -814,7 +832,7 @@ function renderGradePanel(subjectId){
     tr.appendChild(el("td",{},[scoreInput]));
     tr.appendChild(el("td",{},[maxInput]));
     tr.appendChild(el("td",{},[weightInput]));
-    tr.appendChild(el("td",{},[ c.max>0 ? pct.toFixed(dec)+"%" : "—" ]));
+    tr.appendChild(el("td",{},[ c.max>0 ? pct.toFixed(dec)+"%" : "â€”" ]));
     tr.appendChild(el("td",{},[ el("button",{class:"icon-btn", onclick:()=>{ record.categories = record.categories.filter(x=>x.id!==c.id); saveState(); renderGradePanel(subjectId); }},[el("span",{class:"nav-ico","data-ico":"close"})]) ]));
     tbody.appendChild(tr);
   });
@@ -855,12 +873,12 @@ function requiredScoreMessage(record, grade, weightTotal){
   const isPh = state.settings.gradeSystem === "ph";
   const phSuffix = isPh && grade != null ? (() => {
     const g = percentToPhGrade(grade);
-    return g ? ` (Grade equiv: ${g.equiv.toFixed(2)} — ${g.desc})` : "";
+    return g ? ` (Grade equiv: ${g.equiv.toFixed(2)} â€” ${g.desc})` : "";
   })() : "";
   if(remainingWeight <= 0) return grade!=null ? `All weight allocated. Current grade: ${grade.toFixed(state.settings.decimals)}%${phSuffix}.` : "All weight allocated.";
   const currentWeighted = grade!=null ? (grade * weightTotal / 100) : 0;
   const neededAvgOnRemaining = ((target - currentWeighted) / remainingWeight) * 100;
-  if(neededAvgOnRemaining > 100) return `Reaching ${target}% is very difficult with ${remainingWeight}% weight remaining — you would need more than 100% on what's left.`;
+  if(neededAvgOnRemaining > 100) return `Reaching ${target}% is very difficult with ${remainingWeight}% weight remaining â€” you would need more than 100% on what's left.`;
   if(neededAvgOnRemaining < 0) return `You have already secured your ${target}% target based on categories entered so far.${phSuffix}`;
   return `To reach ${target}% overall, average about ${neededAvgOnRemaining.toFixed(state.settings.decimals)}% on the remaining ${remainingWeight}% of weight.${phSuffix}`;
 }
@@ -1163,7 +1181,7 @@ function renderNextClass(){
     el("div", {class:"nc-subject"}, [subjectName(c.subject)]),
     el("div", {class:"nc-meta"}, [
       el("span",{},[c.day]),
-      el("span",{},[`${fmtTime(c.start)}–${fmtTime(c.end)}`]),
+      el("span",{},[`${fmtTime(c.start)}â€“${fmtTime(c.end)}`]),
       el("span",{},[c.type]),
       c.location ? el("span",{},[c.location]) : null,
     ]),
@@ -1204,10 +1222,10 @@ function renderTodayScheduleWidget(){
   if(items.length===0){ box.appendChild(emptyState("No classes")); return; }
   items.forEach(c=>{
     box.appendChild(el("div", {class:"sched-item"}, [
-      el("div", {class:"sched-time"}, [`${fmtTime(c.start)}–${fmtTime(c.end)}`]),
+      el("div", {class:"sched-time"}, [`${fmtTime(c.start)}â€“${fmtTime(c.end)}`]),
       el("div", {class:"sched-info"}, [
         el("div", {class:"sched-subject"}, [subjectName(c.subject)]),
-        el("div", {class:"sched-meta"}, [`${c.type}${c.location?" · "+c.location:""}`])
+        el("div", {class:"sched-meta"}, [`${c.type}${c.location?" Â· "+c.location:""}`])
       ])
     ]));
   });
@@ -1240,7 +1258,7 @@ function renderDeadlinesWidget(){
       el("div", {class:"sched-time"}, [ dr<0 ? "Overdue" : dr===0 ? "Today" : `${dr}d left` ]),
       el("div", {class:"sched-info"}, [
         el("div", {class:"sched-subject"}, [t.title]),
-        el("div", {class:"sched-meta"}, [subjectName(t.subject)+" · "+t.dueDate])
+        el("div", {class:"sched-meta"}, [subjectName(t.subject)+" Â· "+t.dueDate])
       ])
     ]));
   });
@@ -1391,7 +1409,7 @@ async function exportDataPdf(){
     doc.setFontSize(11); doc.setFont("helvetica","normal"); doc.setTextColor(120);
     const subLine = [
       state.profile.program, state.profile.year, state.profile.section, state.profile.school
-    ].filter(Boolean).join(" • ");
+    ].filter(Boolean).join(" â€¢ ");
     if(subLine){ doc.text(subLine, margin, y); y += 14; }
     doc.setTextColor(150); doc.setFontSize(9);
     doc.text("Exported " + new Date().toLocaleString(), margin, y); y += 20;
@@ -1519,7 +1537,7 @@ async function saveSession(){
   const hasStats  = state.focusStats?.sessionsCompleted > 0;
 
   if(!hasTasks && !hasNotes && !hasGrades && !hasImages && !hasStats){
-    toast("Nothing to save — no tasks, notes, grades, or images recorded yet.");
+    toast("Nothing to save â€” no tasks, notes, grades, or images recorded yet.");
     return;
   }
 
@@ -1582,7 +1600,7 @@ async function doSaveSession(){
     doc.text(state.profile.name || "Student", margin, y); y += 24;
 
     doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(100);
-    const subLine = [state.profile.program, state.profile.year, state.profile.section, state.profile.school].filter(Boolean).join("  •  ");
+    const subLine = [state.profile.program, state.profile.year, state.profile.section, state.profile.school].filter(Boolean).join("  â€¢  ");
     if(subLine){ doc.text(subLine, margin, y); y += 14; }
     doc.text("Session saved: " + new Date().toLocaleString(), margin, y); y += 20;
     doc.setDrawColor(60); doc.setLineWidth(1); doc.line(margin, y, pageW-margin, y); y += 18;
@@ -1619,7 +1637,7 @@ async function doSaveSession(){
         
         checkPage(36);
         doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(20);
-        doc.text((note.title||"Untitled") + (subj ? "  —  " + subj.name : ""), margin, y); y += 13;
+        doc.text((note.title||"Untitled") + (subj ? "  â€”  " + subj.name : ""), margin, y); y += 13;
         doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(100);
         doc.text(note.createdAt ? new Date(note.createdAt).toLocaleDateString() : "", margin, y); y += 13;
 
@@ -1668,7 +1686,7 @@ async function doSaveSession(){
             i===0 && avg ? avg : ""
           ]);
         });
-        if(!cats.length) gradeRows.push([name,"—","—","—","—",""]);
+        if(!cats.length) gradeRows.push([name,"â€”","â€”","â€”","â€”",""]);
       });
       doc.autoTable({
         startY: y,
@@ -1726,7 +1744,7 @@ async function doSaveSession(){
     for(let p = 1; p <= pageCount; p++){
       doc.setPage(p);
       doc.setFontSize(8); doc.setTextColor(160);
-      doc.text("mySchedule  •  " + (state.profile.name||""), margin, pageH - 20);
+      doc.text("mySchedule  â€¢  " + (state.profile.name||""), margin, pageH - 20);
       doc.text("Page " + p + " of " + pageCount, pageW - margin, pageH - 20, {align:"right"});
     }
 
@@ -1774,7 +1792,7 @@ function importData(file){
         toast("Restored: " + (counts.join(", ") || "backup imported."));
       });
     }catch(err){
-      toast("Import failed — invalid or corrupted JSON file.");
+      toast("Import failed â€” invalid or corrupted JSON file.");
     }
   };
   reader.readAsText(file);
@@ -1868,7 +1886,7 @@ function expandDayCodes(raw){
 
 function parseTimeRange(str){
   
-  const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?\s*[-â€“â€”to]+\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
   if(!m) return null;
   function to24(h, min, period){
     h = parseInt(h); min = parseInt(min);
@@ -1892,7 +1910,7 @@ function parseScheduleText(rawText){
   
   
   const text = rawText
-    .replace(/\u2022/g, "•")          
+    .replace(/\u2022/g, "â€¢")          
     .replace(/\t/g, " ")
     .replace(/ {2,}/g, " ");
 
@@ -1901,7 +1919,7 @@ function parseScheduleText(rawText){
   
   
   
-  const TIME_RE  = /(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-–—to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i;
+  const TIME_RE  = /(\d{1,2}:\d{2}\s*(?:AM|PM))\s*[-â€“â€”to]+\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i;
   const DAY_RE   = /\b(TThS|MWF|MTh|TTh|ThSa|WSa|MSa|TSa|FSa|ThF|WS|MS|MW|MF|MT|TW|WF|Th|Sa|Su|M|T|W|F|S)\b/;
   const CODE_RE  = /^(OL[A-Z0-9\-]+)\b/;
   const HDR_RE   = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)$/i;
@@ -2019,7 +2037,7 @@ function parseScheduleText(rawText){
       const stripped = line
         .replace(TIME_RE, "")
         .replace(DAY_RE, "")
-        .replace(/•\s*(LEC|LAB)/gi, "")
+        .replace(/â€¢\s*(LEC|LAB)/gi, "")
         .replace(/ZOOM|GYM|ONLINE|FACE\s*TO\s*FACE/gi, "")
         .replace(/\s+/g, " ").trim();
 
@@ -2099,7 +2117,7 @@ function parseScheduleText(rawText){
       let subj = line
         .replace(TIME_RE, "")
         .replace(/\b([A-Z]\d[\w.\-]*|GYM|ZOOM)\b/g, "")
-        .replace(/ZOOM|GYM|ONLINE|FACE\s*TO\s*FACE|F2F|•?\s*(LEC|LAB)/gi, "")
+        .replace(/ZOOM|GYM|ONLINE|FACE\s*TO\s*FACE|F2F|â€¢?\s*(LEC|LAB)/gi, "")
         .replace(/\s+/g, " ").trim();
 
       if(!subj || subj.length < 3){
@@ -2159,7 +2177,7 @@ const AI_PROVIDERS = {
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
       
       const userContent = mediaType === "application/pdf"
-        ? userPrompt + " (PDF provided as text — do your best)"
+        ? userPrompt + " (PDF provided as text â€” do your best)"
         : [
             { type:"image_url", image_url:{ url:"data:"+mediaType+";base64,"+base64Data } },
             { type:"text", text: userPrompt }
@@ -2208,7 +2226,7 @@ const AI_PROVIDERS = {
   },
 
   openrouter: {
-    label: "OpenRouter — free models [FREE]",
+    label: "OpenRouter â€” free models [FREE]",
     vision: true, free: true,
     endpoint: "https://openrouter.ai/api/v1/chat/completions",
     buildRequest(key, systemPrompt, userPrompt, base64Data, mediaType){
@@ -2418,7 +2436,7 @@ function promptForApiKey(){
     function updateLink(){
       const url = PROVIDER_LINKS[providerSelect.value] || "#";
       keyLink.href = url;
-      keyLink.textContent = "Get free API key ↗ " + (providerSelect.options[providerSelect.selectedIndex]||{}).text;
+      keyLink.textContent = "Get free API key â†— " + (providerSelect.options[providerSelect.selectedIndex]||{}).text;
     }
     providerSelect.addEventListener("change", updateLink);
     updateLink();
@@ -2680,15 +2698,15 @@ Extract all grade entries and return ONLY a valid JSON array, no markdown, no ex
 Each entry must have:
 {
   "subject": "Full subject name",
-  "score": (number — the actual grade/score value),
-  "max": (number — maximum possible, usually 100),
+  "score": (number â€” the actual grade/score value),
+  "max": (number â€” maximum possible, usually 100),
   "category": "Quiz" or "Exam" or "Assignment" or "Activity" or "Project" or "Attendance" or "Final Grade" or "Other",
-  "weight": (number — percentage weight if shown, else 0)
+  "weight": (number â€” percentage weight if shown, else 0)
 }
 
 Rules:
 - For final grade report cards: set category to "Final Grade", score = the grade, max = 100
-- Prelim/Midterm/Finals grades → category = "Exam"
+- Prelim/Midterm/Finals grades â†’ category = "Exam"
 - If weight column is absent, set weight = 0
 - Return [] if nothing found
 - Return ONLY the raw JSON array`;
@@ -3144,7 +3162,7 @@ function runSearch(term){
 
   const groups = [
     { label:"Subjects", items: state.subjects.filter(s=>s.name.toLowerCase().includes(q)).map(s=>({label:s.name, action:()=>{switchToNav("subjects"); openSubjectModal(s);} })) },
-    { label:"Classes", items: state.classes.filter(c=>subjectName(c.subject).toLowerCase().includes(q) || c.location.toLowerCase().includes(q)).map(c=>({label:`${subjectName(c.subject)} — ${c.day} ${fmtTime(c.start)}`, action:()=>{switchToNav("schedule"); openClassModal(c);} })) },
+    { label:"Classes", items: state.classes.filter(c=>subjectName(c.subject).toLowerCase().includes(q) || c.location.toLowerCase().includes(q)).map(c=>({label:`${subjectName(c.subject)} â€” ${c.day} ${fmtTime(c.start)}`, action:()=>{switchToNav("schedule"); openClassModal(c);} })) },
     { label:"Assignments", items: state.tasks.filter(t=>t.title.toLowerCase().includes(q)).map(t=>({label:t.title, action:()=>{switchToNav("assignments"); openTaskModal(t);} })) },
     { label:"Notes", items: state.notes.filter(n=>n.title.toLowerCase().includes(q)||n.content.toLowerCase().includes(q)).map(n=>({label:n.title, action:()=>{switchToNav("notes"); openNoteModal(n);} })) },
     { label:"Files", items: state.files.filter(f=>f.name.toLowerCase().includes(q)).map(f=>({label:f.name, action:()=>{switchToNav("files"); openFileModal(f);} })) },
@@ -3226,7 +3244,7 @@ function initOnboarding(){
     dotsEl.querySelectorAll(".ob-dot").forEach((d,i)=>d.classList.toggle("active",i===cur));
     prevBtn.disabled = cur === 0;
     nextBtn.disabled = cur === total-1;
-    nextBtn.textContent = cur === total-1 ? "" : "→";
+    nextBtn.textContent = cur === total-1 ? "" : "â†’";
   }
 
   goTo(0);
@@ -3409,8 +3427,8 @@ function openImageModal(img){
     : el("div", {class:"muted small"}, ["(no image)"]);
 
   const meta = el("p", {class:"small muted"}, [
-    "Size: " + (data.width && data.height ? (data.width + "×" + data.height + "  •  ") : "") +
-    Math.round((data.size||0)/1024) + " KB  •  " +
+    "Size: " + (data.width && data.height ? (data.width + "Ã—" + data.height + "  â€¢  ") : "") +
+    Math.round((data.size||0)/1024) + " KB  â€¢  " +
     new Date(data.createdAt).toLocaleString()
   ]);
 
@@ -3444,7 +3462,7 @@ function openImageModal(img){
 
 function openImageLightbox(dataUrl){
   const lightbox = el("div", {class:"image-lightbox"}, [
-    el("button", {class:"image-lightbox-close", onclick:(e)=>{ e.stopPropagation(); lightbox.remove(); }}, ["×"]),
+    el("button", {class:"image-lightbox-close", onclick:(e)=>{ e.stopPropagation(); lightbox.remove(); }}, ["Ã—"]),
     el("img", {src:dataUrl, onclick:(e)=>e.stopPropagation()})
   ]);
   lightbox.addEventListener("click", ()=>lightbox.remove());
@@ -3469,7 +3487,7 @@ function renderImages(){
     if(s.imageAutoBackup && total > 0){
       const msg = remaining > 0
         ? "Auto-backup in " + remaining + " more image" + (remaining===1?"":"s") + " (" + newSinceBackup + "/" + threshold + " since last backup)."
-        : "Auto-backup ready — upload another image or click Backup Now.";
+        : "Auto-backup ready â€” upload another image or click Backup Now.";
       statusEl.appendChild(el("div", {class:"backup-banner"}, [
         el("span", {class:"small"}, [msg])
       ]));
@@ -3510,7 +3528,7 @@ function renderImages(){
       }),
       el("div", {class:"image-card-body"}, [
         el("div", {class:"image-card-title"}, [img.title || "Untitled"]),
-        el("div", {class:"image-card-meta"}, [ subj || "·", " • ", Math.round((img.size||0)/1024) + " KB" ])
+        el("div", {class:"image-card-meta"}, [ subj || "Â·", " â€¢ ", Math.round((img.size||0)/1024) + " KB" ])
       ]),
       el("div", {class:"image-card-actions"}, [
         el("button", {class:"icon-btn", title:"Download", onclick:(e)=>{
@@ -3519,7 +3537,7 @@ function renderImages(){
           a.href = img.dataUrl;
           a.download = (img.title || "image") + (img.dataUrl.startsWith("data:image/png") ? ".png" : ".jpg");
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }}, [el("span",{class:"nav-ico",style:"font-size:14px;"},["⬇"])]),
+        }}, [el("span",{class:"nav-ico",style:"font-size:14px;"},["â¬‡"])]),
         el("button", {class:"icon-btn", title:"Edit", onclick:(e)=>{ e.stopPropagation(); openImageModal(img); }},
           [el("span",{class:"nav-ico","data-ico":"note"})]),
         el("button", {class:"icon-btn", title:"Delete", onclick:(e)=>{ e.stopPropagation(); deleteImage(img.id); }},
@@ -3530,10 +3548,185 @@ function renderImages(){
   });
 }
 
+/* ---------------------------------------------------------
+   FB-STYLE PROFILE VIEW
+--------------------------------------------------------- */
+function renderProfileView(){
+  const p = state.profile;
+
+  const cover = $("#fb-cover");
+  cover.style.backgroundImage = p.cover ? `url(${p.cover})` : "";
+
+  const avatar = $("#fb-avatar");
+  if(p.avatar){ avatar.innerHTML = ""; avatar.appendChild(el("img",{src:p.avatar, alt:"Avatar"})); }
+  else { avatar.textContent = (p.name||"S").trim().charAt(0).toUpperCase() || "S"; }
+
+  $("#fb-name").textContent = p.name || "Student";
+  $("#fb-sub").textContent = [p.program, p.school].filter(Boolean).join(" â€¢ ") || "My Program";
+
+  const linksWrap = $("#fb-links");
+  linksWrap.innerHTML = "";
+  (p.links||[]).forEach(link=>{
+    if(!link.url) return;
+    let href = link.url.trim();
+    if(!/^https?:\/\//i.test(href)) href = "https://" + href;
+    linksWrap.appendChild(el("a", {class:"fb-link-chip", href, target:"_blank", rel:"noopener noreferrer"}, [link.label || href.replace(/^https?:\/\//,"")]));
+  });
+
+  const completedTasks = state.tasks.filter(t=>t.status==="Completed").length;
+  const stats = [
+    { n: state.subjects.length, l:"Subjects" },
+    { n: completedTasks, l:"Tasks Done" },
+    { n: state.notes.length, l:"Notes" },
+    { n: (state.focusStats && state.focusStats.sessionsCompleted) || 0, l:"Focus Sessions" }
+  ];
+  const statsWrap = $("#fb-stats");
+  statsWrap.innerHTML = "";
+  stats.forEach(s=> statsWrap.appendChild(el("div",{class:"fb-stat"}, [ el("b",{},[String(s.n)]), el("span",{},[s.l]) ])));
+
+  $("#fb-bio").textContent = p.bio && p.bio.trim() ? p.bio : "No bio yet. Tap Edit Profile to add one.";
+
+  const detailsWrap = $("#fb-details");
+  detailsWrap.innerHTML = "";
+  const rows = [
+    ["Student ID", p.studentId], ["Year Level", p.year], ["Section", p.section], ["Email", p.email]
+  ];
+  rows.forEach(([label, val])=>{
+    if(!val) return;
+    detailsWrap.appendChild(el("div",{},[ el("b",{},[label]), el("span",{},[val]) ]));
+  });
+  if(!detailsWrap.children.length){
+    detailsWrap.appendChild(el("p",{class:"muted small"},["Add your student ID, year, section, or email in Edit Profile."]));
+  }
+}
+
+async function handleAvatarUpload(file){
+  if(!file || !file.type.startsWith("image/")) return;
+  try{
+    const { dataUrl } = await compressImageFile(file, 500, 0.85);
+    state.profile.avatar = dataUrl;
+    saveState(); renderAll(); renderProfileView();
+    toast("Profile picture updated.");
+  }catch(e){ toast("Could not update profile picture."); }
+}
+async function handleCoverUpload(file){
+  if(!file || !file.type.startsWith("image/")) return;
+  try{
+    const { dataUrl } = await compressImageFile(file, 1600, 0.85);
+    state.profile.cover = dataUrl;
+    saveState(); renderProfileView();
+    toast("Cover photo updated.");
+  }catch(e){ toast("Could not update cover photo."); }
+}
+async function handleLogoUpload(file, onDone){
+  if(!file || !file.type.startsWith("image/")) return;
+  try{
+    const { dataUrl } = await compressImageFile(file, 300, 0.9);
+    state.brand.logo = dataUrl;
+    saveState(); applyBranding();
+    if(onDone) onDone(dataUrl);
+    toast("Logo updated.");
+  }catch(e){ toast("Could not update logo."); }
+}
+
+function openEditProfileModal(){
+  const p = state.profile;
+  const b = state.brand || { name:"Coursework", logo:"" };
+  const links = (p.links||[]).map(l=>({label:l.label||"", url:l.url||""}));
+
+  const fName = input("text", p.name, "Your name");
+  const fStudentId = input("text", p.studentId, "Student ID");
+  const fProgram = input("text", p.program, "Program");
+  const fYear = input("text", p.year, "Year level");
+  const fSection = input("text", p.section, "Section");
+  const fSchool = input("text", p.school, "School");
+  const fEmail = input("email", p.email, "Email");
+  const fBio = textarea(p.bio, "Tell people a bit about yourself...");
+  const fBrandName = input("text", b.name, "App name shown in sidebar");
+
+  const linksList = el("div", {class:"settings-form", id:"edit-links-list"}, []);
+  function renderLinkRows(){
+    linksList.innerHTML = "";
+    links.forEach((link, idx)=>{
+      const lLabel = input("text", link.label, "Label (e.g. Facebook)");
+      const lUrl = input("text", link.url, "https://...");
+      lLabel.addEventListener("input", ()=> link.label = lLabel.value);
+      lUrl.addEventListener("input", ()=> link.url = lUrl.value);
+      linksList.appendChild(el("div", {class:"link-row"}, [
+        lLabel, lUrl,
+        el("button", {class:"icon-btn", title:"Remove link", onclick:(e)=>{ e.preventDefault(); links.splice(idx,1); renderLinkRows(); }}, [ el("span",{class:"nav-ico","data-ico":"close"}) ])
+      ]));
+    });
+  }
+  renderLinkRows();
+
+  const logoPreview = el("div", {class:"fb-avatar", style:"width:56px;height:56px;font-size:20px;"},
+    b.logo ? [el("img",{src:b.logo, alt:"Logo"})] : [(b.name||"C").trim().charAt(0).toUpperCase() || "C"]
+  );
+  const logoFileInput = input("file", "", "");
+  logoFileInput.type = "file"; logoFileInput.accept = "image/*"; logoFileInput.classList.add("hidden");
+  logoFileInput.addEventListener("change", ()=>{
+    const f = logoFileInput.files[0];
+    if(f) handleLogoUpload(f, (dataUrl)=>{ logoPreview.innerHTML=""; logoPreview.appendChild(el("img",{src:dataUrl})); });
+  });
+
+  const body = el("div", {}, [
+    field("Name", fName),
+    el("div",{class:"form-grid"}, [ field("Student ID", fStudentId), field("Program", fProgram) ]),
+    el("div",{class:"form-grid"}, [ field("Year level", fYear), field("Section", fSection) ]),
+    el("div",{class:"form-grid"}, [ field("School", fSchool), field("Email", fEmail) ]),
+    field("Bio", fBio),
+    field("Links", el("div",{},[
+      linksList,
+      el("button", {class:"btn btn-outline btn-sm", style:"margin-top:6px;", onclick:(e)=>{ e.preventDefault(); links.push({label:"",url:""}); renderLinkRows(); }}, ["+ Add Link"])
+    ])),
+    el("div", {class:"card", style:"margin-top:6px;"}, [
+      el("div", {class:"card-head"}, [ el("h3",{},["App Branding"]) ]),
+      el("div", {class:"card-body settings-form"}, [
+        field("App name (sidebar)", fBrandName),
+        field("App logo", el("div", {style:"display:flex;align-items:center;gap:12px;"}, [
+          logoPreview,
+          el("button", {class:"btn btn-outline btn-sm", onclick:(e)=>{ e.preventDefault(); logoFileInput.click(); }}, ["Upload Logo"]),
+          logoFileInput
+        ]))
+      ])
+    ]),
+    el("div", {class:"modal-actions"}, [
+      el("span",{},[]),
+      el("div", {class:"modal-actions-right"}, [
+        el("button", {class:"btn btn-ghost", onclick:closeModal}, ["Cancel"]),
+        el("button", {class:"btn btn-primary", onclick:()=>{
+          p.name = fName.value.trim() || "Student";
+          p.studentId = fStudentId.value.trim();
+          p.program = fProgram.value.trim() || "My Program";
+          p.year = fYear.value.trim();
+          p.section = fSection.value.trim();
+          p.school = fSchool.value.trim() || "My College";
+          p.email = fEmail.value.trim();
+          p.bio = fBio.value.trim();
+          p.links = links.filter(l=> l.url.trim()).map(l=>({label:l.label.trim(), url:l.url.trim()}));
+          state.brand.name = fBrandName.value.trim() || "Coursework";
+          saveState();
+          applyBranding();
+          renderAll();
+          renderProfileView();
+          closeModal();
+          toast("Profile updated.");
+        }}, ["Save Changes"])
+      ])
+    ])
+  ]);
+  openModal("Edit Profile", body);
+}
+
 function renderAll(){
   $("#mini-name").textContent = state.profile.name || "Student";
   $("#mini-sub").textContent = state.profile.program || "My Program";
-  $("#mini-avatar").textContent = (state.profile.name||"S").trim().charAt(0).toUpperCase() || "S";
+  const miniAv = $("#mini-avatar");
+  if(state.profile.avatar){ miniAv.innerHTML=""; miniAv.appendChild(el("img",{src:state.profile.avatar, alt:"Avatar"})); }
+  else { miniAv.textContent = (state.profile.name||"S").trim().charAt(0).toUpperCase() || "S"; }
+
+  applyBranding();
 
   renderDashboard();
   renderSchedule();
@@ -3544,6 +3737,7 @@ function renderAll(){
   renderImages();
   renderFocus();
   if($("#view-grades").classList.contains("active")) renderGrades();
+  if($("#view-profile").classList.contains("active")) renderProfileView();
 }
 
 function wireEvents(){
@@ -3559,6 +3753,16 @@ function wireEvents(){
   $("#theme-toggle").addEventListener("click", toggleTheme);
 
   
+  $("#mini-profile-btn").addEventListener("click", ()=>switchView("profile"));
+  $("#brand").addEventListener("click", openEditProfileModal);
+  $("#brand").addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openEditProfileModal(); } });
+  $("#fb-edit-btn").addEventListener("click", openEditProfileModal);
+  $("#fb-avatar-edit").addEventListener("click", ()=>$("#avatar-file").click());
+  $("#fb-cover-edit").addEventListener("click", ()=>$("#cover-file").click());
+  $("#avatar-file").addEventListener("change", (e)=>{ const f=e.target.files[0]; if(f) handleAvatarUpload(f); e.target.value=""; });
+  $("#cover-file").addEventListener("change", (e)=>{ const f=e.target.files[0]; if(f) handleCoverUpload(f); e.target.value=""; });
+
+  
   tickClock();
   setInterval(tickClock, 1000);
   setInterval(checkNotifications, 60000); // check every minute
@@ -3568,7 +3772,7 @@ function wireEvents(){
     if (e.target.id === "btn-test-notif") {
       requestNotifPermission(ok => {
         updateNotifPermStatus();
-        if (ok) sendNotif("mySchedule Test", "Notifications are working! ✅", "test-" + Date.now());
+        if (ok) sendNotif("mySchedule Test", "Notifications are working! âœ…", "test-" + Date.now());
       });
     }
   });
