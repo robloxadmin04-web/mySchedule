@@ -3024,11 +3024,12 @@ function switchToNav(view){
   switchView(view);
 }
 
+let _landingInited = false;
 function showLandingPage(){
   $("#landing-page").classList.remove("hidden");
   $("#setup-screen").classList.add("hidden");
   $("#app").classList.add("hidden");
-  initLandingPage();
+  if(!_landingInited){ initLandingPage(); _landingInited = true; }
 }
 
 function hideLandingPage(){
@@ -3580,187 +3581,178 @@ document.addEventListener("DOMContentLoaded", init);
 const DEMO_SCREENS = {
   dashboard:{
     title:"Dashboard",
-    desc:"Your home screen — next class, today's tasks, weekly progress, and quick actions all at a glance.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">NEXT CLASS</div>
-          <div class="lp-demo-card-title">Mathematics in the Modern World</div>
-          <div class="lp-demo-card-meta">Wednesday &bull; 06:00–07:30 &bull; B1.24</div>
-          <div style="margin-top:8px;"><span class="lp-demo-tag lp-demo-tag-blue">in 2h 15m</span></div>
+    desc:"Your home screen — next class, today tasks, weekly progress, and quick actions all at a glance.",
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">NEXT CLASS</div>
+        <div class="lp-demo-card-title">Mathematics in the Modern World</div>
+        <div class="lp-demo-card-meta">Wednesday &bull; 06:00&ndash;07:30 &bull; B1.24</div>
+        <div style="margin-top:8px"><span class="lp-demo-tag lp-demo-tag-blue">in 2h 15m</span></div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">WEEKLY PROGRESS</div>
+        <div style="font-size:1.4rem;font-weight:800;text-align:center;margin:8px 0 4px">40%</div>
+        <div style="background:var(--border);border-radius:99px;height:5px">
+          <div class="lp-demo-pill" style="width:40%"></div>
         </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">WEEKLY PROGRESS</div>
-          <div style="margin:10px 0 4px;font-size:1.6rem;font-weight:800;text-align:center;">40%</div>
-          <div style="background:var(--border);border-radius:99px;height:6px;margin:4px 0;">
-            <div class="lp-demo-pill" style="width:40%;"></div>
-          </div>
-          <div class="lp-demo-card-meta" style="margin-top:6px;">2 of 5 tasks completed</div>
-        </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">TODAY'S SCHEDULE</div>
-          <div class="lp-demo-row">📚 OLMATH01 <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">06:00</span></div>
-          <div class="lp-demo-row">📗 OLENG01 <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">09:00</span></div>
-          <div class="lp-demo-row">💻 OLSOFAPP <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">07:30</span></div>
-        </div>
-      </div>`
+        <div class="lp-demo-card-meta" style="margin-top:6px">2 of 5 tasks completed</div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">TODAY'S SCHEDULE</div>
+        <div class="lp-demo-row">OLMATH01<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">06:00</span></div>
+        <div class="lp-demo-row">OLSOFAPP<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">07:30</span></div>
+        <div class="lp-demo-row">OLENG01<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">09:00</span></div>
+      </div>
+    </div>`
   },
   schedule:{
     title:"Schedule",
     desc:"Your full weekly class timetable. Import from COR PDF or add classes manually.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">MONDAY</div>
-          <div class="lp-demo-row">🔵 NSTP-1 <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">07:30–09:00 • Zoom</span></div>
-          <div class="lp-demo-row">🟢 Komunikasyon <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">09:00–10:30 • Zoom</span></div>
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">MONDAY</div>
+        <div class="lp-demo-row">NSTP-1<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">07:30&ndash;09:00 &bull; Zoom</span></div>
+        <div class="lp-demo-row">Komunikasyon<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">09:00&ndash;10:30 &bull; Zoom</span></div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">WEDNESDAY</div>
+        <div class="lp-demo-row">Math<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">06:00&ndash;07:30 &bull; B1.24</span></div>
+        <div class="lp-demo-row">SofApp<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">07:30&ndash;09:00 &bull; B1.24</span></div>
+        <div class="lp-demo-row">English<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">09:00&ndash;10:30 &bull; B1.24</span></div>
+        <div class="lp-demo-row">PE<span style="margin-left:auto;font-size:.72rem;color:var(--muted)">11:00&ndash;13:00 &bull; GYM</span></div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">IMPORT OPTIONS</div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:5px">
+          <span class="lp-demo-tag lp-demo-tag-blue" style="display:inline-block">Upload COR PDF</span>
+          <span class="lp-demo-tag lp-demo-tag-green" style="display:inline-block">Scan schedule photo (AI)</span>
+          <span class="lp-demo-tag lp-demo-tag-amber" style="display:inline-block">Add manually</span>
         </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">WEDNESDAY</div>
-          <div class="lp-demo-row">📐 Math <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">06:00–07:30 • B1.24</span></div>
-          <div class="lp-demo-row">💻 SofApp <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">07:30–09:00 • B1.24</span></div>
-          <div class="lp-demo-row">📗 English <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">09:00–10:30 • B1.24</span></div>
-          <div class="lp-demo-row">🏃 PE <span style="margin-left:auto;color:var(--muted);font-size:0.75rem;">11:00–13:00 • GYM</span></div>
-        </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">IMPORT OPTIONS</div>
-          <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">
-            <span class="lp-demo-tag lp-demo-tag-blue" style="display:inline-block;">📄 Upload COR PDF</span>
-            <span class="lp-demo-tag lp-demo-tag-green" style="display:inline-block;">🖼️ Scan schedule photo</span>
-            <span class="lp-demo-tag lp-demo-tag-amber" style="display:inline-block;">✏️ Add manually</span>
-          </div>
-        </div>
-      </div>`
+      </div>
+    </div>`
   },
   tasks:{
-    title:"Tasks & Assignments",
+    title:"Tasks and Assignments",
     desc:"Track every assignment, project, and requirement per subject.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card" style="grid-column:1/-1;">
-          <div class="lp-demo-row"><span>📝 Essay Draft <span class="lp-demo-tag lp-demo-tag-red" style="margin-left:8px;">High</span></span><span style="color:var(--muted);font-size:0.75rem;">Due Aug 14 &bull; OLENG01</span></div>
-          <div class="lp-demo-row"><span>📐 Problem Set 3 <span class="lp-demo-tag lp-demo-tag-amber" style="margin-left:8px;">Med</span></span><span style="color:var(--muted);font-size:0.75rem;">Due Aug 16 &bull; OLMATH01</span></div>
-          <div class="lp-demo-row"><span>📖 Reading Assignment <span class="lp-demo-tag lp-demo-tag-blue" style="margin-left:8px;">Low</span></span><span style="color:var(--muted);font-size:0.75rem;">Due Aug 18 &bull; OLFIL-01</span></div>
-          <div class="lp-demo-row" style="opacity:.5;text-decoration:line-through;"><span>✅ Lab Report</span><span style="font-size:0.75rem;color:var(--muted);">Done &bull; OLSOFAPP</span></div>
-        </div>
-      </div>`
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card" style="grid-column:1/-1">
+        <div class="lp-demo-row"><span>Essay Draft <span class="lp-demo-tag lp-demo-tag-red" style="margin-left:6px">High</span></span><span style="font-size:.72rem;color:var(--muted)">Due Aug 14 &bull; OLENG01</span></div>
+        <div class="lp-demo-row"><span>Problem Set 3 <span class="lp-demo-tag lp-demo-tag-amber" style="margin-left:6px">Med</span></span><span style="font-size:.72rem;color:var(--muted)">Due Aug 16 &bull; OLMATH01</span></div>
+        <div class="lp-demo-row"><span>Reading Assignment <span class="lp-demo-tag lp-demo-tag-blue" style="margin-left:6px">Low</span></span><span style="font-size:.72rem;color:var(--muted)">Due Aug 18 &bull; OLFIL-01</span></div>
+        <div class="lp-demo-row" style="opacity:.45;text-decoration:line-through"><span>Lab Report</span><span style="font-size:.72rem;color:var(--muted)">Done &bull; OLSOFAPP</span></div>
+      </div>
+    </div>`
   },
   grades:{
     title:"Grade Calculator",
-    desc:"Set up weighted categories per subject and track your running average.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">MATHEMATICS IN THE MODERN WORLD</div>
-          <div class="lp-demo-row">Quizzes (30%)<span style="margin-left:auto;">88 / 100</span></div>
-          <div class="lp-demo-row">Midterm (30%)<span style="margin-left:auto;">91 / 100</span></div>
-          <div class="lp-demo-row">Final (40%)<span style="margin-left:auto;">— / 100</span></div>
-          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-weight:700;font-size:0.9rem;">Running avg: <span style="color:#22c55e;">89.7%</span></div>
-        </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">PURPOSIVE COMMUNICATION</div>
-          <div class="lp-demo-row">Activities (40%)<span style="margin-left:auto;">92 / 100</span></div>
-          <div class="lp-demo-row">Midterm (30%)<span style="margin-left:auto;">85 / 100</span></div>
-          <div class="lp-demo-row">Finals (30%)<span style="margin-left:auto;">— / 100</span></div>
-          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-weight:700;font-size:0.9rem;">Running avg: <span style="color:#22c55e;">89.1%</span></div>
-        </div>
-      </div>`
+    desc:"Set up weighted categories per subject and see your running average.",
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">MATHEMATICS</div>
+        <div class="lp-demo-row">Quizzes (30%)<span style="margin-left:auto">88 / 100</span></div>
+        <div class="lp-demo-row">Midterm (30%)<span style="margin-left:auto">91 / 100</span></div>
+        <div class="lp-demo-row">Final (40%)<span style="margin-left:auto;color:var(--muted)">&mdash;</span></div>
+        <div style="margin-top:9px;padding-top:7px;border-top:1px solid var(--border);font-weight:700;font-size:.85rem">Avg: <span style="color:#22c55e">89.7%</span></div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">COMM</div>
+        <div class="lp-demo-row">Activities (40%)<span style="margin-left:auto">92 / 100</span></div>
+        <div class="lp-demo-row">Midterm (30%)<span style="margin-left:auto">85 / 100</span></div>
+        <div class="lp-demo-row">Finals (30%)<span style="margin-left:auto;color:var(--muted)">&mdash;</span></div>
+        <div style="margin-top:9px;padding-top:7px;border-top:1px solid var(--border);font-weight:700;font-size:.85rem">Avg: <span style="color:#22c55e">89.1%</span></div>
+      </div>
+    </div>`
   },
   notes:{
     title:"Notes",
     desc:"Write and organize class notes, reminders, and to-dos. Pin the important ones.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-            <div class="lp-demo-card-title">📌 NSTP Rules</div>
-            <span class="lp-demo-tag lp-demo-tag-blue">Pinned</span>
-          </div>
-          <div class="lp-demo-card-meta">OLNSTP-1 &bull; Aug 12</div>
-          <div style="font-size:0.82rem;color:var(--muted);margin-top:8px;line-height:1.5;">1. Need 5 minutes before Zoom call<br>2. Always open camera<br>3. Submit attendance form...</div>
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div class="lp-demo-card-title">NSTP Rules</div>
+          <span class="lp-demo-tag lp-demo-tag-blue">Pinned</span>
         </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-title" style="margin-bottom:6px;">Math Notes — Chapter 2</div>
-          <div class="lp-demo-card-meta">OLMATH01 &bull; Aug 11</div>
-          <div style="font-size:0.82rem;color:var(--muted);margin-top:8px;line-height:1.5;">Sets and subsets, Venn diagrams...</div>
-        </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-title" style="margin-bottom:6px;">Requirements — 1st Trim</div>
-          <div class="lp-demo-card-meta">General &bull; Aug 10</div>
-          <div style="font-size:0.82rem;color:var(--muted);margin-top:8px;">Essay, Lab Report, Reflection Paper...</div>
-        </div>
-      </div>`
+        <div class="lp-demo-card-meta">OLNSTP-1 &bull; Aug 12</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:7px;line-height:1.5">1. Join Zoom 5 mins early&NewLine;2. Camera always on&NewLine;3. Submit attendance form</div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-title" style="margin-bottom:5px">Math Notes &mdash; Chapter 2</div>
+        <div class="lp-demo-card-meta">OLMATH01 &bull; Aug 11</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:7px">Sets and subsets, Venn diagrams...</div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-title" style="margin-bottom:5px">Requirements 1st Trim</div>
+        <div class="lp-demo-card-meta">General &bull; Aug 10</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:7px">Essay, Lab Report, Reflection Paper...</div>
+      </div>
+    </div>`
   },
   focus:{
     title:"Focus Timer",
     desc:"Built-in Pomodoro timer. Study in focused intervals, track your progress.",
-    html:`
-      <div style="display:flex;flex-direction:column;align-items:center;padding:20px 0;">
-        <div style="width:140px;height:140px;border-radius:50%;border:8px solid #4a9eff;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:20px;">
-          <div style="font-size:2.2rem;font-weight:800;font-variant-numeric:tabular-nums;">25:00</div>
-          <div style="font-size:0.75rem;color:var(--muted);">FOCUS</div>
-        </div>
-        <div style="display:flex;gap:10px;margin-bottom:24px;">
-          <button class="btn btn-primary" style="pointer-events:none;">▶ Start</button>
-          <button class="btn btn-outline" style="pointer-events:none;">Reset</button>
-        </div>
-        <div style="display:flex;gap:24px;text-align:center;">
-          <div><div style="font-size:1.3rem;font-weight:800;">12</div><div style="font-size:0.75rem;color:var(--muted);">Sessions</div></div>
-          <div><div style="font-size:1.3rem;font-weight:800;">300</div><div style="font-size:0.75rem;color:var(--muted);">Minutes</div></div>
-        </div>
-      </div>`
+    html:`<div style="display:flex;flex-direction:column;align-items:center;padding:16px 0">
+      <div style="width:120px;height:120px;border-radius:50%;border:7px solid #4a9eff;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:18px">
+        <div style="font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums">25:00</div>
+        <div style="font-size:.68rem;color:var(--muted)">FOCUS</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <button class="btn btn-primary" style="pointer-events:none">Start</button>
+        <button class="btn btn-outline" style="pointer-events:none">Reset</button>
+      </div>
+      <div style="display:flex;gap:28px;text-align:center">
+        <div><div style="font-size:1.2rem;font-weight:800">12</div><div style="font-size:.72rem;color:var(--muted)">Sessions</div></div>
+        <div><div style="font-size:1.2rem;font-weight:800">300</div><div style="font-size:.72rem;color:var(--muted)">Minutes</div></div>
+      </div>
+    </div>`
   },
   images:{
     title:"Image Storage",
-    desc:"Store screenshots, whiteboard photos, and lesson captures. Drag & drop to upload.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card" style="text-align:center;padding:20px;">
-          <div style="font-size:2rem;margin-bottom:8px;">🖼️</div>
-          <div style="border:2px dashed var(--border);border-radius:8px;padding:16px;font-size:0.8rem;color:var(--muted);">Drag &amp; drop images here<br>or tap Upload Image</div>
-        </div>
-        <div class="lp-demo-card">
-          <div style="background:var(--border);border-radius:6px;height:80px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.75rem;">Screenshot</div>
-          <div class="lp-demo-card-title" style="font-size:0.8rem;">Math Lesson Aug 12</div>
-          <div class="lp-demo-card-meta">OLMATH01 &bull; 42 KB</div>
-        </div>
-        <div class="lp-demo-card">
-          <div style="background:var(--border);border-radius:6px;height:80px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.75rem;">Whiteboard</div>
-          <div class="lp-demo-card-title" style="font-size:0.8rem;">Chapter 2 Notes</div>
-          <div class="lp-demo-card-meta">OLMATH01 &bull; 88 KB</div>
-        </div>
-      </div>`
+    desc:"Store screenshots, whiteboard photos, and lesson captures. Drag and drop to upload.",
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card" style="text-align:center;padding:16px">
+        <div style="border:2px dashed var(--border);border-radius:7px;padding:16px;font-size:.78rem;color:var(--muted)">Drag &amp; drop images here<br>or tap Upload Image</div>
+      </div>
+      <div class="lp-demo-card">
+        <div style="background:var(--border);border-radius:5px;height:70px;margin-bottom:7px;display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--muted)">Screenshot</div>
+        <div class="lp-demo-card-title" style="font-size:.78rem">Math Lesson Aug 12</div>
+        <div class="lp-demo-card-meta">OLMATH01 &bull; 42 KB</div>
+      </div>
+      <div class="lp-demo-card">
+        <div style="background:var(--border);border-radius:5px;height:70px;margin-bottom:7px;display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--muted)">Photo</div>
+        <div class="lp-demo-card-title" style="font-size:.78rem">Whiteboard Notes</div>
+        <div class="lp-demo-card-meta">OLMATH01 &bull; 88 KB</div>
+      </div>
+    </div>`
   },
   import:{
     title:"Import Schedule",
     desc:"Upload your COR PDF or a photo — the app reads classes automatically. No AI key needed for PDFs.",
-    html:`
-      <div class="lp-demo-preview">
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">WITHOUT AI KEY</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">✅</span> Import schedule from PDF</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">✅</span> Manual entry for all tabs</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">✅</span> Full app features</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-red">❌</span> Photo-to-schedule</div>
+    html:`<div class="lp-demo-preview">
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">WITHOUT AI KEY</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">Yes</span>Import schedule from PDF</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">Yes</span>Manual entry all tabs</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">Yes</span>Full app features</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-red">No</span>Photo scanning</div>
+      </div>
+      <div class="lp-demo-card">
+        <div class="lp-demo-card-label">WITH FREE AI KEY</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">Yes</span>Everything above</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-blue">+</span>Scan schedule photo</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-blue">+</span>Extract grades from image</div>
+        <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-blue">+</span>Detect subjects from COR</div>
+      </div>
+      <div class="lp-demo-card" style="grid-column:1/-1">
+        <div class="lp-demo-card-label">FREE PROVIDERS</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">
+          <span class="lp-demo-tag lp-demo-tag-blue">Google Gemini</span>
+          <span class="lp-demo-tag lp-demo-tag-green">Groq</span>
+          <span class="lp-demo-tag lp-demo-tag-amber">OpenRouter</span>
+          <span class="lp-demo-tag lp-demo-tag-blue">Mistral</span>
+          <span class="lp-demo-tag lp-demo-tag-green">Cohere</span>
         </div>
-        <div class="lp-demo-card">
-          <div class="lp-demo-card-label">WITH FREE AI KEY</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-green">✅</span> Everything above</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-blue">✨</span> Scan schedule photo</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-blue">✨</span> Extract grades from image</div>
-          <div class="lp-demo-row"><span class="lp-demo-tag lp-demo-tag-blue">✨</span> Detect subjects from COR</div>
-        </div>
-        <div class="lp-demo-card" style="grid-column:1/-1;">
-          <div class="lp-demo-card-label">FREE API PROVIDERS</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-            <span class="lp-demo-tag lp-demo-tag-blue">Google Gemini</span>
-            <span class="lp-demo-tag lp-demo-tag-green">Groq</span>
-            <span class="lp-demo-tag lp-demo-tag-amber">OpenRouter</span>
-            <span class="lp-demo-tag lp-demo-tag-blue">Mistral</span>
-            <span class="lp-demo-tag lp-demo-tag-green">Cohere</span>
-          </div>
-        </div>
-      </div>`
+      </div>
+    </div>`
   }
 };
 
