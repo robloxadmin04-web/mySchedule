@@ -788,7 +788,11 @@ function renderGradePanel(subjectId){
   const tableCard = el("div", {class:"table-wrap"});
   const table = el("table");
   table.appendChild(el("thead",{},[ el("tr",{},[
-    el("th",{},["Category"]), el("th",{},["Score"]), el("th",{},["Max"]), el("th",{},["Weight %"]), el("th",{},["Result"]), el("th",{},[""])
+    el("th",{},["Category"]),
+    el("th",{title:"Score mo (e.g. 18)"},["Score"]),
+    el("th",{title:"Max na posibleng marka (e.g. 20)"},["Max"]),
+    el("th",{title:"Bahagi ng final grade (%)"},["Weight %"]),
+    el("th",{},["Result"]), el("th",{},[""])
   ])]));
   const tbody = el("tbody");
   if(record.categories.length===0){
@@ -799,11 +803,11 @@ function renderGradePanel(subjectId){
   record.categories.forEach(c=>{
     const pct = c.max>0 ? (c.score/c.max*100) : 0;
     const tr = el("tr");
-    const scoreInput = input("number", c.score); scoreInput.min=0;
+    const scoreInput = input("number", c.score, "Score"); scoreInput.min=0; scoreInput.title="Score (nakuha mo)";
     scoreInput.addEventListener("input", ()=>{ c.score=Number(scoreInput.value)||0; saveState(); refreshGradeSummaryOnly(subjectId); });
-    const maxInput = input("number", c.max); maxInput.min=0;
+    const maxInput = input("number", c.max, "Max"); maxInput.min=0; maxInput.title="Max (pinakamataas na posible)";
     maxInput.addEventListener("input", ()=>{ c.max=Number(maxInput.value)||0; saveState(); refreshGradeSummaryOnly(subjectId); });
-    const weightInput = input("number", c.weight); weightInput.min=0;
+    const weightInput = input("number", c.weight, "Weight %"); weightInput.min=0; weightInput.title="Weight % (bahagi ng final grade)";
     weightInput.addEventListener("input", ()=>{ c.weight=Number(weightInput.value)||0; saveState(); refreshGradeSummaryOnly(subjectId); });
 
     tr.appendChild(el("td",{},[c.name]));
@@ -820,9 +824,9 @@ function renderGradePanel(subjectId){
 
   const addRow = el("div", {class:"category-row", style:"margin-top:14px;"});
   const catNameSelect = select([...CATEGORY_TYPES_DEFAULT.map(c=>({value:c,label:c}))], "Quiz");
-  const scoreI = input("number","0"); scoreI.min=0;
-  const maxI = input("number","100"); maxI.min=0;
-  const weightI = input("number","10"); weightI.min=0;
+  const scoreI = input("number","0","Score"); scoreI.min=0; scoreI.title="Score (nakuha mo)";
+  const maxI = input("number","100","Max"); maxI.min=0; maxI.title="Max (pinakamataas na posible)";
+  const weightI = input("number","10","Weight %"); weightI.min=0; weightI.title="Weight % (bahagi ng final grade)";
   const addBtn = el("button", {class:"btn btn-primary btn-sm", onclick:()=>{
     record.categories.push({ id:uid(), name:catNameSelect.value, score:Number(scoreI.value)||0, max:Number(maxI.value)||0, weight:Number(weightI.value)||0 });
     saveState(); renderGradePanel(subjectId);
