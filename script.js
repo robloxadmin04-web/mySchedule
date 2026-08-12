@@ -204,10 +204,67 @@ function openModal(title, bodyNode, opts){
   $("#modal-overlay").classList.remove("hidden");
   const firstInput = body.querySelector("input,select,textarea");
   if(firstInput) setTimeout(()=>firstInput.focus(), 30);
+  enableModalDrag();
 }
 function closeModal(){
   $("#modal-overlay").classList.add("hidden");
   $("#modal-body").innerHTML = "";
+  // Reset any drag transform
+  const box = $("#modal-box");
+  if(box){ box.style.transform = ""; box.dataset.dx = "0"; box.dataset.dy = "0"; }
+}
+
+// Make modal draggable by its header
+let _modalDragWired = false;
+function enableModalDrag(){
+  if(_modalDragWired) return;
+  _modalDragWired = true;
+  const box = $("#modal-box");
+  const head = box.querySelector(".modal-head");
+  if(!head || !box) return;
+  head.style.cursor = "move";
+  head.style.userSelect = "none";
+  head.style.touchAction = "none";
+
+  let dragging = false;
+  let startX = 0, startY = 0;
+  let baseX  = 0, baseY  = 0;
+
+  function getPoint(e){
+    if(e.touches && e.touches[0]) return { x:e.touches[0].clientX, y:e.touches[0].clientY };
+    return { x:e.clientX, y:e.clientY };
+  }
+
+  function onDown(e){
+    // Ignore drags started on interactive elements inside the header (like the close button)
+    if(e.target.closest("button,input,select,textarea,a")) return;
+    dragging = true;
+    const p = getPoint(e);
+    startX = p.x; startY = p.y;
+    baseX = Number(box.dataset.dx) || 0;
+    baseY = Number(box.dataset.dy) || 0;
+    e.preventDefault();
+  }
+
+  function onMove(e){
+    if(!dragging) return;
+    const p = getPoint(e);
+    const dx = baseX + (p.x - startX);
+    const dy = baseY + (p.y - startY);
+    box.style.transform = "translate(" + dx + "px, " + dy + "px)";
+    box.dataset.dx = String(dx);
+    box.dataset.dy = String(dy);
+  }
+
+  function onUp(){ dragging = false; }
+
+  head.addEventListener("mousedown", onDown);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+
+  head.addEventListener("touchstart", onDown, { passive:false });
+  window.addEventListener("touchmove", onMove, { passive:false });
+  window.addEventListener("touchend", onUp);
 }
 function confirmModal(message, onConfirm){
   const wrap = el("div", {}, [
