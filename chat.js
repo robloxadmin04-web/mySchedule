@@ -16,6 +16,13 @@
       Once signed in with Google here, the same Supabase session is
       shared (via localStorage) with the rest of the app on this
       origin — no separate login needed elsewhere.
+   6. PROFILE SYNC: whenever the user is signed in, this file reads
+      the dashboard's local profile (name + avatar, from index.html's
+      "coursework.state.v1" localStorage entry) and pushes it into
+      the Supabase "profiles" row (display_name, avatar_url), so
+      friends/chat always show whatever identity the user set on
+      their dashboard. If a user is signed in but hasn't set a
+      dashboard name yet, the existing Supabase profile is left as-is.
    ============================================================ */
 
 (function () {
@@ -58,17 +65,65 @@
     return [uidA, uidB].sort().join("_");
   }
 
+  // ---- 1b. PROFILE SYNC (Coursework dashboard -> Supabase) --------
+  // The dashboard (index.html / script.js) keeps its own "profile"
+  // (name, avatar) in localStorage under this key, separate from the
+  // Supabase profiles table. Whenever we're signed in, push name/avatar
+  // from the dashboard's local profile into Supabase so friends/chat
+  // always show the same identity the user set on their dashboard.
+  const DASHBOARD_STORAGE_KEY = "coursework.state.v1";
+
+  function readDashboardProfile() {
+    try {
+      const raw = localStorage.getItem(DASHBOARD_STORAGE_KEY);
+      if (!raw) return null;
+      const state = JSON.parse(raw);
+      const p = state && state.profile;
+      if (!p) return null;
+      return {
+        name: (p.name || "").trim(),
+        avatar: p.avatar || ""
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function syncProfileFromDashboard() {
+    if (!currentUser) return;
+    const local = readDashboardProfile();
+    if (!local || !local.name) return; // nothing set on dashboard yet
+
+    const needsNameSync = local.name !== currentUser.display_name;
+    const needsAvatarSync = local.avatar !== (currentUser.avatar_url || "");
+    if (!needsNameSync && !needsAvatarSync) return;
+
+    const { data, error } = await sb
+      .from("profiles")
+      .update({ display_name: local.name, avatar_url: local.avatar })
+      .eq("id", currentUser.id)
+      .select()
+      .single();
+    if (error) { console.error("Profile sync failed:", error.message); return; }
+
+    currentUser = data;
+    // Reflect the synced identity anywhere our own name/avatar shows.
+    if (activeChatFriend) $("#chat-with-name") && ($("#chat-with-name").textContent = activeChatFriend.display_name || activeChatFriend.username);
+  }
+
   // ---- 2. AUTH -----------------------------------------------------
   async function initAuth() {
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await loadCurrentUser(session.user.id);
+      await syncProfileFromDashboard();
       scrubUrlHash();
     }
 
     sb.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         await loadCurrentUser(session.user.id);
+        await syncProfileFromDashboard();
         scrubUrlHash();
         renderAuthState();
       } else {
@@ -78,6 +133,12 @@
     });
 
     renderAuthState();
+
+    // Live-sync if the dashboard profile changes in another tab
+    // (or in this same tab, if index.html and chat.html ever share a page).
+    window.addEventListener("storage", (e) => {
+      if (e.key === DASHBOARD_STORAGE_KEY) syncProfileFromDashboard();
+    });
   }
 
   // Removes "#access_token=..." (and any stray extra "#..." fragments)
