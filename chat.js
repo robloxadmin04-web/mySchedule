@@ -41,6 +41,15 @@
     return node;
   }
 
+  // chat.css expects an .avatar with 1-2 letter initials inside .list-row
+  function initialsOf(nameOrUsername) {
+    const s = (nameOrUsername || "?").trim();
+    if (!s) return "?";
+    const parts = s.split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
   let currentUser = null; // { id, email, username, display_name }
   let activeChatFriend = null; // profile object of friend currently chatting with
   let messageChannel = null; // realtime subscription handle
@@ -201,13 +210,15 @@
     let requests;
     try { requests = await getIncomingRequests(); } catch (e) { return; }
     if (!requests.length) {
-      box.appendChild(el("p", { class: "muted" }, ["No pending friend requests."]));
+      box.appendChild(el("p", { class: "list-empty" }, ["No pending friend requests."]));
       return;
     }
     requests.forEach(r => {
       const p = r.profiles;
-      box.appendChild(el("div", { class: "friend-request-row" }, [
-        el("span", {}, [p.display_name || p.username]),
+      const name = p.display_name || p.username;
+      box.appendChild(el("div", { class: "list-row" }, [
+        el("span", { class: "avatar" }, [initialsOf(name)]),
+        el("span", { class: "list-row-name" }, [name]),
         el("button", { class: "btn btn-primary btn-sm", onclick: async () => { await acceptRequest(r.id); renderIncomingRequests(); renderFriendsList(); } }, ["Accept"]),
         el("button", { class: "btn btn-ghost btn-sm", onclick: async () => { await declineRequest(r.id); renderIncomingRequests(); } }, ["Decline"])
       ]));
@@ -221,15 +232,17 @@
     let friends;
     try { friends = await getFriends(); } catch (e) { return; }
     if (!friends.length) {
-      box.appendChild(el("p", { class: "muted" }, ["No friends yet. Search above to add someone."]));
+      box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search above to add someone."]));
       return;
     }
     friends.forEach(f => {
-      box.appendChild(el("div", { class: "friend-row" }, [
-        el("span", { onclick: () => openChat(f) }, [f.display_name || f.username]),
-        el("button", { class: "btn btn-outline btn-sm", onclick: () => openChat(f) }, ["Chat"]),
+      const name = f.display_name || f.username;
+      box.appendChild(el("div", { class: "list-row" }, [
+        el("span", { class: "avatar online" }, [initialsOf(name)]),
+        el("span", { class: "list-row-name", onclick: () => openChat(f) }, [name]),
+        el("button", { class: "btn btn-ghost btn-sm", onclick: () => openChat(f) }, ["Chat"]),
         el("button", { class: "btn btn-ghost btn-sm", onclick: async () => {
-          if (confirm(`Unfriend ${f.display_name || f.username}?`)) {
+          if (confirm(`Unfriend ${name}?`)) {
             await unfriend(f.id);
             renderFriendsList();
             if (activeChatFriend && activeChatFriend.id === f.id) closeChat();
@@ -244,12 +257,14 @@
     if (!box) return;
     box.innerHTML = "";
     if (!results.length) {
-      box.appendChild(el("p", { class: "muted" }, ["No users found."]));
+      box.appendChild(el("p", { class: "list-empty" }, ["No users found."]));
       return;
     }
     results.forEach(u => {
-      box.appendChild(el("div", { class: "friend-row" }, [
-        el("span", {}, [u.display_name || u.username]),
+      const name = u.display_name || u.username;
+      box.appendChild(el("div", { class: "list-row" }, [
+        el("span", { class: "avatar" }, [initialsOf(name)]),
+        el("span", { class: "list-row-name" }, [name]),
         el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
           e.target.disabled = true;
           e.target.textContent = "Sent";
@@ -264,7 +279,7 @@
     $("#chat-panel").classList.remove("hidden");
     $("#chat-with-name").textContent = friend.display_name || friend.username;
     const log = $("#chat-log");
-    log.innerHTML = "<p class='muted'>Loading messages...</p>";
+    log.innerHTML = "<p class='list-empty'>Loading messages...</p>";
     const messages = await loadMessages(friend.id);
     log.innerHTML = "";
     messages.forEach(appendMessageToLog);
@@ -285,7 +300,7 @@
     const log = $("#chat-log");
     if (!log) return;
     const mine = msg.sender_id === currentUser.id;
-    log.appendChild(el("div", { class: "chat-bubble " + (mine ? "mine" : "theirs") }, [msg.text]));
+    log.appendChild(el("div", { class: "msg" + (mine ? " mine" : "") }, [msg.text]));
   }
 
   // ---- 6. WIRE UP EVENTS ------------------------------------------------
