@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat - Coursework</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand" id="brand">
+      <span class="brand-mark" id="brand-mark">C</span>
+      <span class="brand-name" id="brand-name">Coursework</span>
+    </div>
+    <nav class="nav" id="nav">
+      <a class="nav-item" href="index.html"><span class="nav-ico" data-ico="grid"></span><span>Dashboard</span></a>
+      <a class="nav-item active" href="chat.html"><span class="nav-ico" data-ico="user"></span><span>Chat</span></a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="view active" id="view-friends">
+
+      <div class="view-head">
+        <div class="view-eyebrow">Direct messages</div>
+        <h1 class="view-title">Chat</h1>
+      </div>
+
+      <div id="friends-auth" class="card">
+        <h2>Sign in to chat with friends</h2>
+        <p class="auth-sub">Connect your account to find friends and start a conversation.</p>
+        <button class="btn btn-primary" id="google-signin-btn">
+          <span class="google-ico" aria-hidden="true"></span>
+          Sign in with Google
+        </button>
+      </div>
+
+      <div id="friends-app" class="hidden friends-grid">
+        <div class="card" style="max-width:none; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:13px; color:var(--steel);">Signed in</span>
+          <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
+        </div>
+
+        <section class="card">
+          <h3 class="card-title">Add a Friend</h3>
+          <div class="field-row">
+            <input type="text" id="friend-search-input" placeholder="Search username...">
+            <button class="btn btn-primary btn-sm" id="friend-search-btn">Search</button>
+          </div>
+          <div id="friend-search-results"></div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Friend Requests</h3>
+          <div id="friend-requests-list"><p class="list-empty">No pending friend requests.</p></div>
+        </section>
+
+        <section class="card">
+          <h3 class="card-title">Your Friends</h3>
+          <div id="friends-list"><p class="list-empty">No friends yet. Search above to add someone.</p></div>
+        </section>
+
+        <div id="chat-panel" class="hidden">
+          <div class="chat-header">
+            <span id="chat-with-name"></span>
+            <button class="btn btn-ghost btn-sm" id="chat-close-btn">Close</button>
+          </div>
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button class="btn btn-primary" id="chat-send-btn">Send</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  /* ============================================================
+     LOCAL SESSION CACHE
+     ------------------------------------------------------------
+     chat.js (Supabase) still owns real auth. This layer only
+     removes the sign-in flash on repeat visits and keeps a local
+     "was signed in" flag in sync, by watching the same elements
+     chat.js already toggles ('hidden' on #friends-auth /
+     #friends-app). No changes to chat.js are required.
+     ============================================================ */
+  (function(){
+    var KEY = 'cw_chat_signed_in';
+    var authEl = document.getElementById('friends-auth');
+    var appEl  = document.getElementById('friends-app');
+
+    // Optimistic render: if we previously confirmed a session,
+    // show the app shell immediately (with a skeleton sweep) instead
+    // of flashing the sign-in card while Supabase re-checks session.
+    if (localStorage.getItem(KEY) === '1') {
+      authEl.classList.add('hidden');
+      appEl.classList.remove('hidden');
+      appEl.classList.add('skel-loading');
+    }
+
+    // Keep the flag in sync with whatever chat.js decides once it
+    // finishes its real Supabase session check.
+    function sync(){
+      var signedIn = !appEl.classList.contains('hidden');
+      localStorage.setItem(KEY, signedIn ? '1' : '0');
+      if (signedIn) appEl.classList.remove('skel-loading');
+    }
+
+    var mo = new MutationObserver(sync);
+    mo.observe(authEl, { attributes: true, attributeFilter: ['class'] });
+    mo.observe(appEl,  { attributes: true, attributeFilter: ['class'] });
+
+    // Explicit sign-out button also clears the cache immediately.
+    document.getElementById('friends-signout-btn').addEventListener('click', function(){
+      localStorage.removeItem(KEY);
+    });
+  })();
+</script>
+<script src="chat.js"></script>
+</body>
+</html>
