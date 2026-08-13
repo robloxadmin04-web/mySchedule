@@ -61,11 +61,15 @@
   // ---- 2. AUTH -----------------------------------------------------
   async function initAuth() {
     const { data: { session } } = await sb.auth.getSession();
-    if (session) await loadCurrentUser(session.user.id);
+    if (session) {
+      await loadCurrentUser(session.user.id);
+      scrubUrlHash();
+    }
 
     sb.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         await loadCurrentUser(session.user.id);
+        scrubUrlHash();
         renderAuthState();
       } else {
         currentUser = null;
@@ -76,15 +80,31 @@
     renderAuthState();
   }
 
+  // Removes "#access_token=..." (and any stray extra "#..." fragments)
+  // from the address bar once Supabase has read the session from it,
+  // so it never carries over into the next sign-in redirect.
+  function scrubUrlHash() {
+    if (window.location.hash) {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }
+
   async function loadCurrentUser(uid) {
     const { data, error } = await sb.from("profiles").select("*").eq("id", uid).single();
     if (!error) currentUser = data;
   }
 
   async function signInWithGoogle() {
+    // IMPORTANT: use a clean redirect URL with no leftover hash/query.
+    // If a previous OAuth attempt left "#access_token=..." in the URL,
+    // window.location.href would carry that stale fragment along, and
+    // the new "#access_token=..." from this login gets appended after
+    // it — producing a URL with multiple "#" fragments that Supabase's
+    // session parser cannot read, silently breaking sign-in.
+    const cleanUrl = window.location.origin + window.location.pathname;
     const { data, error } = await sb.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.href }
+      options: { redirectTo: cleanUrl }
     });
     if (error) throw error;
     return data;
