@@ -108,6 +108,7 @@
 
     currentUser = data;
     // Reflect the synced identity anywhere our own name/avatar shows.
+    renderBrandIdentity();
     if (activeChatFriend) $("#chat-with-name") && ($("#chat-with-name").textContent = activeChatFriend.display_name || activeChatFriend.username);
   }
 
@@ -281,6 +282,37 @@
     } else {
       authBox.classList.remove("hidden");
       appBox.classList.add("hidden");
+    }
+    renderBrandIdentity();
+  }
+
+  // Shows the signed-in user's own synced profile (avatar + name) in the
+  // sidebar brand slot, in place of the static "C" / "Coursework" — so
+  // it's easy to see at a glance whether the dashboard profile synced.
+  function renderBrandIdentity() {
+    const mark = $("#brand-mark");
+    const name = $("#brand-name");
+    if (!mark || !name) return;
+
+    if (!currentUser) {
+      mark.innerHTML = "C";
+      name.textContent = "Coursework";
+      return;
+    }
+
+    const displayName = currentUser.display_name || currentUser.username || "Coursework";
+    name.textContent = displayName;
+
+    if (currentUser.avatar_url) {
+      mark.innerHTML = "";
+      mark.appendChild(el("img", {
+        src: currentUser.avatar_url,
+        alt: displayName,
+        style: "width:100%;height:100%;object-fit:cover;border-radius:inherit;"
+      }));
+    } else {
+      mark.innerHTML = "";
+      mark.textContent = initialsOf(displayName);
     }
   }
 
