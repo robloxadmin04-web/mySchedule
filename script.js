@@ -1736,6 +1736,17 @@ function importData(file){
   };
   reader.readAsText(file);
 }
+function fixChatLoadingIssue(){
+  // Only clears the Chat page's local "was signed in" cache flag
+  // (cw_chat_signed_in). This is what can get stuck and cause the
+  // Chat tab to show a permanent loading skeleton with unclickable
+  // buttons. Does NOT touch your dashboard data or your actual
+  // Supabase login - just forces Chat to redo its normal auth check
+  // on next visit.
+  localStorage.removeItem("cw_chat_signed_in");
+  toast("Chat cache cleared. Open Chat again to reload it fresh.");
+}
+
 function resetData(){
 
   const hasData = state.subjects.length || state.classes.length || state.tasks.length ||
@@ -3733,6 +3744,8 @@ function wireEvents(){
   $("#btn-import").addEventListener("click", ()=>$("#import-file").click());
   $("#import-file").addEventListener("change", (e)=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
   $("#btn-reset").addEventListener("click", resetData);
+  const fixChatBtn = $("#btn-fix-chat");
+  if (fixChatBtn) fixChatBtn.addEventListener("click", fixChatLoadingIssue);
 
   const btnAddImg = $("#btn-add-image");
   const imgInput  = $("#image-upload-input");
