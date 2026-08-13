@@ -8,213 +8,78 @@
 </head>
 <body>
 
-<div class="app">
-
+<div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="brand" id="brand">
       <span class="brand-mark" id="brand-mark">C</span>
       <span class="brand-name" id="brand-name">Coursework</span>
     </div>
     <nav class="nav" id="nav">
-      <a class="nav-item" href="index.html"><span class="nav-ico" data-ico="grid"></span>Dashboard</a>
-      <a class="nav-item active" href="chat.html"><span class="nav-ico" data-ico="chat"></span>Chat</a>
+      <a class="nav-item" href="index.html"><span class="nav-ico" data-ico="grid"></span><span>Dashboard</span></a>
+      <a class="nav-item active" href="chat.html"><span class="nav-ico" data-ico="user"></span><span>Chat</span></a>
     </nav>
-    <div class="sidebar-foot">
-      <div class="mini-profile" id="mini-profile">
-        <div class="mini-avatar" id="mini-avatar">S</div>
-        <div class="mini-info">
-          <div class="mini-name" id="mini-name">Student</div>
-          <div class="mini-sub" id="mini-sub">My Program</div>
-        </div>
-      </div>
-    </div>
   </aside>
 
-  <div class="scrim" id="scrim"></div>
+  <main class="main">
+    <div class="view active" id="view-friends">
 
-  <div class="main">
-    <header class="topbar">
-      <button class="icon-btn hamburger" id="hamburger" aria-label="Open menu">
-        <span class="nav-ico" data-ico="menu"></span>
-      </button>
-      <div class="topbar-title">
-        <span class="nav-ico" data-ico="chat"></span>
-        Chat
+      <div class="view-head">
+        <div class="view-eyebrow">Direct messages</div>
+        <h1 class="view-title">Chat</h1>
       </div>
-      <div class="topbar-right">
-        <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">
-          <span class="nav-ico" data-ico="theme"></span>
+
+      <div id="friends-auth" class="card">
+        <h2>Sign in to chat with friends</h2>
+        <p class="auth-sub">Connect your account to find friends and start a conversation.</p>
+        <button class="btn btn-primary" id="google-signin-btn">
+          <span class="google-ico" aria-hidden="true"></span>
+          Sign in with Google
         </button>
       </div>
-    </header>
 
-    <main class="content">
-      <div class="view" id="view-friends">
-
-        <div class="view-head">
-          <div>
-            <h1>Chat</h1>
-            <p class="muted">Direct messages with friends.</p>
-          </div>
+      <div id="friends-app" class="hidden friends-grid">
+        <div class="card" style="max-width:none; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:13px; color:var(--steel);">Signed in</span>
+          <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
         </div>
 
-        <div id="friends-auth" class="card auth-card">
-          <h2>Sign in to chat with friends</h2>
-          <p class="auth-sub">Connect your account to find friends and start a conversation.</p>
-          <button class="btn btn-primary" id="google-signin-btn">
-            <span class="google-ico" aria-hidden="true"></span>
-            Sign in with Google
-          </button>
-        </div>
-
-        <div id="friends-app" class="hidden friends-grid">
-          <div class="card" style="padding:12px 16px; display:flex; align-items:center; justify-content:space-between;">
-            <span style="font-size:13px; color:var(--text-muted);">Signed in</span>
-            <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
+        <section class="card">
+          <h3 class="card-title">Add a Friend</h3>
+          <div class="field-row">
+            <input type="text" id="friend-search-input" placeholder="Search username...">
+            <button class="btn btn-primary btn-sm" id="friend-search-btn">Search</button>
           </div>
+          <div id="friend-search-results"></div>
+        </section>
 
-          <section class="card">
-            <h3 class="card-section-title">Add a Friend</h3>
-            <div class="field-row">
-              <input type="text" id="friend-search-input" placeholder="Search username...">
-              <button class="btn btn-primary btn-sm" id="friend-search-btn">Search</button>
-            </div>
-            <div id="friend-search-results"></div>
-          </section>
+        <section class="card">
+          <h3 class="card-title">Friend Requests</h3>
+          <div id="friend-requests-list"><p class="list-empty">No pending friend requests.</p></div>
+        </section>
 
-          <section class="card">
-            <h3 class="card-section-title">Friend Requests</h3>
-            <div id="friend-requests-list"><p class="list-empty">No pending friend requests.</p></div>
-          </section>
+        <section class="card">
+          <h3 class="card-title">Your Friends</h3>
+          <div id="friends-list"><p class="list-empty">No friends yet. Search above to add someone.</p></div>
+        </section>
 
-          <section class="card">
-            <h3 class="card-section-title">Your Friends</h3>
-            <div id="friends-list"><p class="list-empty">No friends yet. Search above to add someone.</p></div>
-          </section>
-
-          <div id="chat-panel" class="hidden">
-            <div class="chat-header">
-              <span id="chat-with-name"></span>
-              <button class="btn btn-ghost btn-sm" id="chat-close-btn">Close</button>
-            </div>
-            <div id="chat-log" class="chat-log"></div>
-            <div class="chat-input-row">
-              <input type="text" id="chat-input" placeholder="Type a message...">
-              <button class="btn btn-primary" id="chat-send-btn">Send</button>
-            </div>
+        <div id="chat-panel" class="hidden">
+          <div class="chat-header">
+            <span id="chat-with-name"></span>
+            <button class="btn btn-ghost btn-sm" id="chat-close-btn">Close</button>
+          </div>
+          <div id="chat-log" class="chat-log"></div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button class="btn btn-primary" id="chat-send-btn">Send</button>
           </div>
         </div>
-
       </div>
-    </main>
-  </div>
+
+    </div>
+  </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="chat.js"></script>
-<script>
-// ---- Theme & profile sync for chat.html ----
-(function() {
-  const STORAGE_KEY = 'coursework.state.v1';
-  const THEME_KEY = 'coursework.theme';
-
-  // --- Theme ---
-  function getStoredTheme() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const st = JSON.parse(raw);
-        if (st && st.settings && st.settings.theme) return st.settings.theme;
-      }
-    } catch(e) {}
-    return localStorage.getItem(THEME_KEY) || 'light';
-  }
-
-  function applyTheme(theme) {
-    const html = document.documentElement;
-    if (theme === 'system') {
-      const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      html.setAttribute('data-theme', dark ? 'dark' : 'light');
-    } else {
-      html.setAttribute('data-theme', theme);
-    }
-  }
-
-  function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
-    const next = current === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
-    localStorage.setItem(THEME_KEY, next);
-    // Also persist into coursework state if possible
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const st = JSON.parse(raw);
-        if (st && st.settings) { st.settings.theme = next; localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); }
-      }
-    } catch(e) {}
-  }
-
-  applyTheme(getStoredTheme());
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (getStoredTheme() === 'system') applyTheme('system');
-  });
-  document.addEventListener('DOMContentLoaded', function() {
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.addEventListener('click', toggleTheme);
-
-    // Hamburger / sidebar scrim
-    const hamburger = document.getElementById('hamburger');
-    const sidebar = document.getElementById('sidebar');
-    const scrim = document.getElementById('scrim');
-    if (hamburger && sidebar && scrim) {
-      hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); scrim.classList.toggle('visible'); });
-      scrim.addEventListener('click', () => { sidebar.classList.remove('open'); scrim.classList.remove('visible'); });
-    }
-
-    syncLocalProfile();
-    window.addEventListener('storage', (e) => { if (e.key === STORAGE_KEY) syncLocalProfile(); });
-  });
-
-  function syncLocalProfile() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const st = JSON.parse(raw);
-      const p = st && st.profile;
-      if (!p) return;
-
-      const name = (p.name || '').trim() || 'Student';
-      const sub = [p.program, p.year].filter(Boolean).join(' • ') || 'My Program';
-      const avatar = p.avatar || '';
-
-      // Mini profile in sidebar
-      const miniName = document.getElementById('mini-name');
-      const miniSub = document.getElementById('mini-sub');
-      const miniAvatar = document.getElementById('mini-avatar');
-      if (miniName) miniName.textContent = name;
-      if (miniSub) miniSub.textContent = sub;
-      if (miniAvatar) {
-        if (avatar) {
-          miniAvatar.innerHTML = '<img src="' + avatar + '" alt="' + name + '">';
-        } else {
-          miniAvatar.textContent = name.slice(0,2).toUpperCase();
-        }
-      }
-
-      // Brand mark — only update if NOT already showing a synced Google profile
-      // (chat.js renderBrandIdentity handles the Google avatar after sign-in)
-      const brandName = document.getElementById('brand-name');
-      const brandMark = document.getElementById('brand-mark');
-      if (brandName && brandName.textContent === 'Coursework') {
-        if (brandName) brandName.textContent = name;
-        if (brandMark && !brandMark.querySelector('img')) {
-          brandMark.textContent = name.slice(0,1).toUpperCase();
-        }
-      }
-    } catch(e) {}
-  }
-})();
-</script>
 </body>
 </html>
