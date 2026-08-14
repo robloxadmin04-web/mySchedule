@@ -65,17 +65,9 @@
     <main class="content" id="content">
       <div class="view active" id="view-chat">
 
-        <div class="view-head">
-          <div>
-            <div class="view-eyebrow">Direct messages</div>
-            <h1 class="view-title">Chat</h1>
-            <p class="muted">Stay connected with your classmates and friends.</p>
-          </div>
-        </div>
-
         <div id="friends-auth" class="card auth-card">
-          <h2>Sign in to chat with friends</h2>
-          <p class="muted auth-sub">Connect your account to find friends and start a conversation.</p>
+          <h2>Sign in to chat</h2>
+          <p class="muted auth-sub">Connect your account to message your classmates and friends.</p>
           <button class="btn btn-primary" id="google-signin-btn">
             <span class="google-ico" aria-hidden="true"></span>
             Sign in with Google
@@ -87,47 +79,36 @@
 
             <section class="chat-list-pane" id="chat-list-pane">
               <div class="list-pane-top">
-                <span class="signed-in-label"><span class="dot"></span>Signed in</span>
-                <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
-              </div>
-
-              <div class="tabbar" id="chat-tabbar" role="tablist">
-                <button class="tab-btn active" data-tab="messages" role="tab" aria-selected="true">Messages</button>
-                <button class="tab-btn" data-tab="friends" role="tab" aria-selected="false">Friends</button>
-                <button class="tab-btn" data-tab="requests" role="tab" aria-selected="false">Requests</button>
-                <button class="tab-btn" data-tab="add" role="tab" aria-selected="false">Add People</button>
-              </div>
-
-              <section class="tab-panel active" id="panel-messages" data-panel="messages">
-                <h3 class="pane-heading">Messages <span class="count-pill" id="messages-count"></span></h3>
-                <div id="messages-list" class="conv-list"><p class="list-empty">No conversations yet. Add a friend to start chatting.</p></div>
-              </section>
-
-              <section class="tab-panel" id="panel-friends" data-panel="friends">
-                <h3 class="pane-heading">Your Friends <span class="count-pill" id="friends-count"></span></h3>
-                <div id="friends-list" class="conv-list"><p class="list-empty">No friends yet. Search Add People to add someone.</p></div>
-              </section>
-
-              <section class="tab-panel" id="panel-requests" data-panel="requests">
-                <h3 class="pane-heading">Friend Requests</h3>
-                <div id="friend-requests-list" class="conv-list"><p class="list-empty">No pending friend requests.</p></div>
-              </section>
-
-              <section class="tab-panel" id="panel-add" data-panel="add">
-                <h3 class="pane-heading">Add a Friend</h3>
-                <div class="field-row">
-                  <input type="text" id="friend-search-input" placeholder="Search username...">
-                  <button class="btn btn-primary btn-sm" id="friend-search-btn">Search</button>
+                <h1 class="list-pane-title">Chat</h1>
+                <div class="list-pane-actions">
+                  <button class="icon-btn icon-btn-sm" id="requests-btn" aria-label="Friend requests" title="Friend requests">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                    <span class="req-badge hidden" id="req-badge">0</span>
+                  </button>
+                  <button class="icon-btn icon-btn-sm" id="friends-signout-btn" aria-label="Sign out" title="Sign out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                  </button>
                 </div>
-                <div id="friend-search-results" class="conv-list"></div>
-              </section>
+              </div>
+
+              <div class="list-pane-search">
+                <input type="text" id="conv-search-input" placeholder="Search conversations...">
+              </div>
+
+              <button class="new-msg-btn" id="new-message-btn" type="button">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                New message
+              </button>
+
+              <h3 class="pane-heading">Conversations</h3>
+              <div id="messages-list" class="conv-list"></div>
             </section>
 
             <section class="chat-convo-pane" id="chat-convo-pane">
               <div class="convo-empty" id="convo-empty">
-                <div class="convo-empty-mark">C</div>
-                <p class="convo-empty-title">No conversation selected</p>
-                <p class="muted small">Pick someone from Messages or Friends to start chatting.</p>
+                <p class="convo-empty-title">No conversations yet</p>
+                <p class="muted small">Start a conversation with your classmates and friends.</p>
+                <button class="btn btn-outline btn-sm" id="convo-empty-new-btn" type="button">+ New message</button>
               </div>
 
               <div class="convo-active hidden" id="chat-panel">
@@ -140,16 +121,44 @@
                     <span id="chat-with-name"></span>
                     <span class="chat-with-status" id="chat-with-status">Online</span>
                   </div>
-                  <button class="btn btn-ghost btn-sm chat-close-btn" id="chat-close-btn">Close</button>
                 </div>
                 <div id="chat-log" class="chat-log"></div>
                 <div class="chat-input-row">
-                  <input type="text" id="chat-input" placeholder="Type a message...">
+                  <input type="text" id="chat-input" placeholder="Write a message...">
                   <button class="btn btn-primary" id="chat-send-btn">Send</button>
                 </div>
               </div>
             </section>
 
+          </div>
+        </div>
+
+        <!-- New message overlay: search all users, message friends directly,
+             send a friend request to non-friends. Replaces the old
+             Messages/Friends/Requests/Add People tab bar. -->
+        <div class="chat-modal-backdrop hidden" id="new-message-backdrop">
+          <div class="chat-modal" id="new-message-modal">
+            <div class="chat-modal-head">
+              <h2>New message</h2>
+              <button class="icon-btn icon-btn-sm" id="new-message-close" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <input type="text" id="friend-search-input" placeholder="Search people...">
+            <div id="friend-search-results" class="conv-list"></div>
+          </div>
+        </div>
+
+        <!-- Friend requests overlay -->
+        <div class="chat-modal-backdrop hidden" id="requests-backdrop">
+          <div class="chat-modal" id="requests-modal">
+            <div class="chat-modal-head">
+              <h2>Friend requests</h2>
+              <button class="icon-btn icon-btn-sm" id="requests-close" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div id="friend-requests-list" class="conv-list"><p class="list-empty">No pending friend requests.</p></div>
           </div>
         </div>
 
