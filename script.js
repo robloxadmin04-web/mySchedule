@@ -120,7 +120,7 @@ function checkNotifications() {
 function defaultState(){
   return {
     setupDone:false,
-    profile:{ name:"Student", studentId:"", program:"My Program", year:"", section:"", school:"My College", email:"", avatar:"", cover:"", bio:"", links:[] },
+    profile:{ name:"Student", studentId:"", program:"My Program", year:"", section:"", school:"My College", email:"", avatar:"", cover:"", bio:"", links:[], visibility:"public" },
     brand:{ name:"Coursework", logo:"" },
     settings:{
       weekStart:"mon", timeFormat:"24", classDuration:60, defaultClassType:"Face to Face",
@@ -3555,6 +3555,10 @@ function openEditProfileModal(){
   const fSchool = input("text", p.school, "School");
   const fEmail = input("email", p.email, "Email");
   const fBio = textarea(p.bio, "Tell people a bit about yourself...");
+  const fVisibility = select([
+    {value:"public", label:"Public — anyone can find and message me"},
+    {value:"private", label:"Private — hidden from search"}
+  ], p.visibility || "public");
   const fBrandName = input("text", b.name, "App name shown in sidebar");
 
   const linksList = el("div", {class:"settings-form", id:"edit-links-list"}, []);
@@ -3589,6 +3593,10 @@ function openEditProfileModal(){
     el("div",{class:"form-grid"}, [ field("Year level", fYear), field("Section", fSection) ]),
     el("div",{class:"form-grid"}, [ field("School", fSchool), field("Email", fEmail) ]),
     field("Bio", fBio),
+    field("Profile visibility", el("div",{},[
+      fVisibility,
+      el("p",{class:"muted small",style:"margin-top:4px;"},["Private profiles won't show up under \u201cNew message\u201d search for other users."])
+    ])),
     field("Links", el("div",{},[
       linksList,
       el("button", {class:"btn btn-outline btn-sm", style:"margin-top:6px;", onclick:(e)=>{ e.preventDefault(); links.push({label:"",url:""}); renderLinkRows(); }}, ["+ Add Link"])
@@ -3617,6 +3625,7 @@ function openEditProfileModal(){
           p.school = fSchool.value.trim() || "My College";
           p.email = fEmail.value.trim();
           p.bio = fBio.value.trim();
+          p.visibility = fVisibility.value === "private" ? "private" : "public";
           p.links = links.filter(l=> l.url.trim()).map(l=>({label:l.label.trim(), url:l.url.trim()}));
           state.brand.name = fBrandName.value.trim() || "Coursework";
           saveState();
