@@ -12,11 +12,10 @@
   letter-spacing: -.01em;
 }
 
-/* Theme toggle sun/moon visibility rules now live in style.css so
-   index.html and chat.html share one definition. */
+#view-chat{ height: calc(100vh - 65px); display: flex; flex-direction: column; }
 
-/* ---------- Header / auth card ---------- */
-.auth-card{ max-width: 480px; padding: 22px; margin-top: 4px; }
+/* ---------- Sign-in card ---------- */
+.auth-card{ max-width: 420px; padding: 22px; margin-top: 24px; }
 .auth-card h2{ font-size: 17px; margin-bottom: 6px; }
 .auth-sub{ margin-bottom: 16px; }
 
@@ -35,13 +34,15 @@
 /* ---------- Two-pane chat shell (list + conversation) ----------
    Both panes live inside the dashboard's existing .content area.
    This is content layout, not application navigation. */
+#friends-app{ flex: 1; min-height: 0; display: flex; }
 .chat-shell{
   display: grid;
-  grid-template-columns: 328px 1fr;
+  grid-template-columns: 320px 1fr;
   gap: var(--gap);
   align-items: stretch;
-  height: calc(100vh - 180px);
-  min-height: 480px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .chat-list-pane,
@@ -56,67 +57,49 @@
   overflow: hidden;
 }
 
+/* ---------- List pane ---------- */
 .list-pane-top{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 16px 12px;
   flex-shrink: 0;
 }
-.signed-in-label{ display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); }
-.signed-in-label .dot{ width: 7px; height: 7px; border-radius: 50%; background: var(--text); flex-shrink: 0; }
+.list-pane-title{ font-size: 17px; }
+.list-pane-actions{ display: flex; gap: 6px; }
 
-.tabbar{
-  display: flex;
-  gap: 4px;
-  padding: 10px 12px 0;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.tabbar::-webkit-scrollbar{ display: none; }
-.tab-btn{
-  appearance: none; border: none; background: transparent;
-  font-size: 12.5px; font-weight: 600; color: var(--text-muted);
-  padding: 8px 10px 10px; cursor: pointer; white-space: nowrap;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  position: relative; display: flex; align-items: center; gap: 6px;
-  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
-}
-.tab-btn:hover{ color: var(--text); background: var(--surface-2); }
-.tab-btn.active{ color: var(--text); }
-.tab-btn.active::after{
-  content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px; background: var(--text);
-}
-.tab-badge{
+.icon-btn-sm{ width: 32px; height: 32px; position: relative; }
+.req-badge{
+  position: absolute; top: -4px; right: -4px;
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
   background: var(--accent); color: var(--accent-contrast);
   font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--surface);
 }
 
-.tab-panel{ display: none; flex-direction: column; min-height: 0; flex: 1; }
-.tab-panel.active{ display: flex; }
+.list-pane-search{ padding: 0 16px 10px; flex-shrink: 0; }
+.list-pane-search input{ width: 100%; }
+
+.new-msg-btn{
+  margin: 0 16px 12px; padding: 9px 12px;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  flex-shrink: 0;
+}
+.new-msg-btn:hover{ background: var(--surface); border-color: var(--text-faint); }
 
 .pane-heading{
-  padding: 12px 16px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--text-muted); display: flex; align-items: center; gap: 8px; flex-shrink: 0;
-}
-.count-pill{
-  font-size: 10.5px; color: var(--text-faint); font-weight: 500; letter-spacing: 0; text-transform: none;
+  padding: 4px 16px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-faint); flex-shrink: 0;
 }
 
-.conv-list{ overflow-y: auto; flex: 1; padding: 4px 8px 10px; }
+.conv-list{ overflow-y: auto; flex: 1; padding: 2px 8px 10px; min-height: 0; }
 .list-empty{ color: var(--text-faint); font-size: 13px; padding: 14px 10px; margin: 0; }
 
-#panel-add{ padding: 0 12px 12px; }
-#panel-add .field-row{ display: flex; gap: 8px; padding: 12px 4px 6px; }
-#panel-add .field-row input{ flex: 1; }
-
 /* ---------- Conversation item — the whole row is clickable, no
-   separate "Open" button. Modeled on the dashboard's list rows but
-   compact enough for a message list. ---------- */
+   separate "Open" button. ---------- */
 .conv-item{
   display: flex; align-items: center; gap: 12px;
   width: 100%; text-align: left;
@@ -151,30 +134,16 @@
   width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
 }
 
-.conv-item-actions{ display: flex; gap: 6px; flex-shrink: 0; margin-left: 4px; }
-
 .conv-item-row{ display: flex; align-items: center; gap: 4px; }
 .conv-item-row .conv-item{ flex: 1; min-width: 0; }
-
-/* Friend-request rows keep small explicit actions (Accept/Decline),
-   which are real decisions — not a duplicate "Open" affordance. */
-.request-item{ display: flex; align-items: center; gap: 12px; padding: 10px 8px; }
-.request-item + .request-item{ border-top: 1px solid var(--border); }
-.request-item-body{ flex: 1; min-width: 0; }
-.request-item-name{ font-size: 13.5px; font-weight: 600; }
-.request-item-sub{ font-size: 12px; color: var(--text-faint); }
 
 /* ---------- Conversation pane ---------- */
 .convo-empty{
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; padding: 40px; text-align: center; color: var(--text-muted);
 }
-.convo-empty-mark{
-  width: 48px; height: 48px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: center; font-family: var(--font-display);
-  font-weight: 700; font-size: 18px; color: var(--text-faint); margin-bottom: 6px;
-}
-.convo-empty-title{ font-weight: 600; color: var(--text); font-size: 14px; }
+.convo-empty-title{ font-weight: 600; color: var(--text); font-size: 14.5px; }
+.convo-empty .btn{ margin-top: 10px; }
 
 .convo-active{ display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .convo-active.hidden{ display: none; }
@@ -189,33 +158,57 @@
 .chat-with-status{ font-size: 11.5px; color: var(--text-faint); }
 
 .chat-log{
-  flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px;
+  flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
   background: var(--bg-sunken);
 }
+.msg-row{ display: flex; flex-direction: column; max-width: 68%; align-self: flex-start; }
+.msg-row.mine{ align-self: flex-end; align-items: flex-end; }
 .msg{
-  max-width: 74%; padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.4;
+  padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.4;
   background: var(--surface); border: 1px solid var(--border); color: var(--text);
-  align-self: flex-start; border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 4px;
 }
-.msg.mine{
-  align-self: flex-end; background: var(--accent); color: var(--accent-contrast);
+.msg-row.mine .msg{
+  background: var(--accent); color: var(--accent-contrast);
   border-color: var(--accent); border-bottom-right-radius: 4px; border-bottom-left-radius: 14px;
 }
+.msg-time{ font-size: 10.5px; color: var(--text-faint); margin-top: 3px; padding: 0 3px; }
 
 .chat-input-row{
-  display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border);
   background: var(--surface); flex-shrink: 0;
 }
 .chat-input-row input{ flex: 1; }
 
+/* ---------- New message / requests overlays ---------- */
+.chat-modal-backdrop{
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,.4);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 10vh 16px 16px;
+}
+.chat-modal-backdrop.hidden{ display: none; }
+.chat-modal{
+  width: 100%; max-width: 420px; max-height: 70vh;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+}
+.chat-modal-head{
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.chat-modal-head h2{ font-size: 15px; }
+.chat-modal > input{ margin: 12px 16px; width: auto; }
+.chat-modal .conv-list{ padding: 0 12px 12px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px){
-  .chat-shell{ height: calc(100vh - 160px); }
+  #view-chat{ height: calc(100vh - 60px); }
 }
 
 @media (max-width: 760px){
-  .chat-shell{ display: block; height: auto; }
-  .chat-list-pane{ height: auto; }
+  .chat-shell{ display: block; }
+  .chat-list-pane{ height: 100%; border-radius: var(--radius); }
   .chat-convo-pane{
     position: fixed; inset: 0; z-index: 40; border-radius: 0; border: none;
     display: none;
@@ -225,4 +218,7 @@
   .chat-back-btn{ display: flex; }
   .chat-header{ padding-top: max(12px, env(safe-area-inset-top)); }
   .chat-input-row{ padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .msg-row{ max-width: 82%; }
+  .chat-modal-backdrop{ padding: 0; align-items: stretch; }
+  .chat-modal{ max-width: none; max-height: none; border-radius: 0; height: 100%; }
 }
