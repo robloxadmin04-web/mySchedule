@@ -238,6 +238,23 @@
           </div>
         </div>
 
+        <!-- Generic confirm dialog (replaces window.confirm for a consistent UI) -->
+        <div class="chat-modal-backdrop hidden" id="confirm-dialog-backdrop">
+          <div class="chat-modal confirm-dialog" id="confirm-dialog-modal">
+            <div class="chat-modal-head">
+              <h2 id="confirm-dialog-title">Are you sure?</h2>
+              <button class="icon-btn icon-btn-sm" id="confirm-dialog-close" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <p class="confirm-dialog-message" id="confirm-dialog-message"></p>
+            <div class="confirm-dialog-actions">
+              <button type="button" class="btn btn-outline btn-sm" id="confirm-dialog-cancel">Cancel</button>
+              <button type="button" class="btn btn-primary btn-sm" id="confirm-dialog-ok">Confirm</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Report modal -->
         <div class="chat-modal-backdrop hidden" id="report-backdrop">
           <div class="chat-modal" id="report-modal">
