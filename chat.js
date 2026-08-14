@@ -358,8 +358,9 @@
     const row = Object.assign({
       chat_id: chatId, sender_id: currentUser.id, recipient_id: friendId, text: (text || "").trim()
     }, extra || {});
-    const { error } = await sb.from("messages").insert(row);
+    const { data, error } = await sb.from("messages").insert(row).select().single();
     if (error) throw error;
+    return data;
   }
 
   async function editMessageText(messageId, text) {
@@ -1162,7 +1163,11 @@
           onclick: async () => {
             closeSharePicker();
             if (!activeChatFriend) return;
-            try { await sendMessage(activeChatFriend.id, "", { share_type: kind, share_payload: item }); }
+            try {
+              const sent = await sendMessage(activeChatFriend.id, "", { share_type: kind, share_payload: item });
+              appendMessageToLog(sent);
+              renderMessagesList();
+            }
             catch (e) { alert(e.message); }
           }
         }, [
@@ -1193,6 +1198,7 @@
   function appendMessageToLog(msg) {
     const log = $("#chat-log");
     if (!log) return;
+    if (activeMessages.some(m => m.id === msg.id)) return; // dedupe: optimistic send + realtime echo
     activeMessages.push(msg);
     const wasNearBottom = isNearBottom(log);
     renderChatLog(activeMessages);
@@ -1293,7 +1299,9 @@
           const uploaded = await uploadAttachment(activeChatFriend.id, att.file, att.kind);
           Object.assign(extra, uploaded);
         }
-        await sendMessage(activeChatFriend.id, text, extra);
+        const sent = await sendMessage(activeChatFriend.id, text, extra);
+        appendMessageToLog(sent);
+        renderMessagesList();
       } catch (e) { alert(e.message); }
     }
 
