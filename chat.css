@@ -30,6 +30,9 @@
   --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --signal: #2E7D5B;   /* online / success, used sparingly */
+  --signal-soft: #E5F1EB;
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -162,8 +165,29 @@ html, body{
 .friends-grid{
   display: grid;
   grid-template-columns: minmax(0,1fr);
+  grid-template-areas:
+    "topbar"
+    "add"
+    "requests"
+    "friends";
   gap: 16px;
-  max-width: 640px;
+  max-width: 980px;
+}
+
+.friends-grid > .topbar-card{ grid-area: topbar; }
+.friends-grid > #friend-add-card{ grid-area: add; }
+.friends-grid > #friend-requests-card{ grid-area: requests; }
+.friends-grid > #friend-list-card{ grid-area: friends; }
+
+@media (min-width: 760px){
+  .friends-grid{
+    grid-template-columns: minmax(0,340px) minmax(0,1fr);
+    grid-template-areas:
+      "topbar   topbar"
+      "add      friends"
+      "requests friends";
+    align-items: start;
+  }
 }
 
 /* ---------- Cards ---------- */
@@ -296,6 +320,27 @@ input[type="text"]:focus{
 
 #friends-signout-btn{ margin: 0; }
 
+.topbar-card{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px !important;
+}
+.topbar-card .signed-in-label{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--steel);
+}
+.topbar-card .signed-in-label::before{
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  flex-shrink: 0;
+}
+
 /* ---------- Lists (search results / requests / friends) ---------- */
 .list-empty{
   color: var(--steel-2);
@@ -307,13 +352,20 @@ input[type="text"]:focus{
 .list-row{
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 8px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 12px 10px;
   border-radius: var(--radius-sm);
   transition: background var(--dur-1) var(--ease);
 }
 .list-row:hover{ background: var(--cloud); }
 .list-row + .list-row{ border-top: 1px solid var(--mist); }
+
+/* buttons that follow the name in a row: keep them grouped and
+   let them wrap onto their own line together on narrow cards
+   instead of crushing the name column */
+.list-row .btn{ flex-shrink: 0; }
+.list-row-name{ flex-basis: 140px; }
 
 .avatar{
   width: 34px; height: 34px;
@@ -333,7 +385,7 @@ input[type="text"]:focus{
   right: -1px; bottom: -1px;
   width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--signal);
   border: 2px solid var(--paper);
 }
 
@@ -346,6 +398,17 @@ input[type="text"]:focus{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.list-row-actions{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#friend-list-card .list-row{ padding: 12px 10px; }
+#friend-list-card{ min-height: 100%; }
+#friend-list-card .card-title{ margin-bottom: 10px; }
 
 /* ---------- Chat panel (slide-in card) ---------- */
 #chat-panel{
