@@ -895,7 +895,10 @@
         el("a", { class: "msg-file-open", href: msg.attachment_url, target: "_blank", rel: "noopener" }, ["Open"])
       ]));
     }
-    if (msg.text) parts.push(document.createTextNode(msg.text));
+    // Skip the auto-generated caption ("Photo" / filename / share label)
+    // used only to satisfy the DB's not-empty text constraint.
+    const isAutoCaption = (msg.attachment_url && (msg.text === "Photo" || msg.text === msg.attachment_name)) || !!msg.share_type;
+    if (msg.text && !isAutoCaption) parts.push(document.createTextNode(msg.text));
 
     return el("div", { class: "msg" }, parts);
   }
@@ -1164,7 +1167,8 @@
             closeSharePicker();
             if (!activeChatFriend) return;
             try {
-              const sent = await sendMessage(activeChatFriend.id, "", { share_type: kind, share_payload: item });
+              const heads = { schedule: "Schedule shared", assignment: "Assignment shared", subject: "Subject shared" };
+              const sent = await sendMessage(activeChatFriend.id, heads[kind] || "Shared", { share_type: kind, share_payload: item });
               appendMessageToLog(sent);
               renderMessagesList();
             }
@@ -1299,7 +1303,10 @@
           const uploaded = await uploadAttachment(activeChatFriend.id, att.file, att.kind);
           Object.assign(extra, uploaded);
         }
-        const sent = await sendMessage(activeChatFriend.id, text, extra);
+        // messages.text has a not-empty check constraint — fall back to
+        // a short label when sending an attachment with no caption.
+        const sendText = text.trim() || (extra.attachment_type === "image" ? "Photo" : extra.attachment_url ? (extra.attachment_name || "File") : "");
+        const sent = await sendMessage(activeChatFriend.id, sendText, extra);
         appendMessageToLog(sent);
         renderMessagesList();
       } catch (e) { alert(e.message); }
