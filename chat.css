@@ -174,14 +174,15 @@
 .chat-log > .date-sep:first-child{ margin-top: 0; }
 
 /* ---------- Grouped messages ---------- */
-.msg-group{ display: flex; flex-direction: column; max-width: 68%; align-self: flex-start; margin-top: 8px; }
+.msg-group{ display: flex; flex-direction: column; max-width: 68%; align-self: flex-start; margin-top: 8px; min-width: 0; }
 .msg-group.mine{ align-self: flex-end; align-items: flex-end; }
-.msg-row{ display: flex; flex-direction: column; }
+.msg-row{ display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
 .msg-row + .msg-row{ margin-top: 2px; }
 .msg{
   padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.4;
   background: var(--surface); border: 1px solid var(--border); color: var(--text);
-  border-bottom-left-radius: 4px; white-space: pre-wrap; word-break: break-word;
+  border-bottom-left-radius: 4px; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
+  width: fit-content; max-width: 100%; box-sizing: border-box;
 }
 .msg-group.mine .msg{
   background: var(--accent); color: var(--accent-contrast);
@@ -254,7 +255,7 @@
   .chat-back-btn{ display: flex; }
   .chat-header{ padding-top: max(12px, env(safe-area-inset-top)); }
   .chat-input-row{ padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-  .msg-row{ max-width: 82%; }
+  .msg-group{ max-width: 82%; }
   .chat-modal-backdrop{ padding: 0; align-items: stretch; }
   .chat-modal{ max-width: none; max-height: none; border-radius: 0; height: 100%; }
 }
@@ -419,7 +420,7 @@
   width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
 }
 
-.msg-image{ display: block; max-width: 220px; max-height: 220px; border-radius: 12px; cursor: pointer; object-fit: cover; }
+.msg-image{ display: block; width: 220px; max-width: 100%; height: auto; max-height: 220px; border-radius: 12px; cursor: pointer; object-fit: cover; }
 .msg-file-card{
   display: flex; align-items: center; gap: 10px; min-width: 220px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
