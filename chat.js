@@ -455,15 +455,14 @@
 
   // Clears the conversation for the current user only (hides existing
   // messages on their side; the other person's copy is untouched).
+  // Clears the conversation for the current user only (hides existing
+  // messages on their side; the other person's copy is untouched).
+  // Uses a security-definer RPC because messages RLS normally only lets
+  // you update rows you sent — this needs to hide received ones too.
   async function clearConversationForMe(friendId) {
     const chatId = chatIdFor(currentUser.id, friendId);
-    const { data, error } = await sb.from("messages").select("id, deleted_for").eq("chat_id", chatId);
+    const { error } = await sb.rpc("delete_conversation_for_me", { p_chat_id: chatId });
     if (error) throw error;
-    const rows = (data || []).filter(m => !(m.deleted_for || []).includes(currentUser.id));
-    for (const row of rows) {
-      const arr = (row.deleted_for || []).concat(currentUser.id);
-      await sb.from("messages").update({ deleted_for: arr }).eq("id", row.id);
-    }
   }
 
   async function setMute(friendId, minsOrMode) {
