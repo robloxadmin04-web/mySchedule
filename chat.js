@@ -362,12 +362,21 @@
     }
   }
 
+  // Sets the small mono count next to a panel's title (e.g. "Messages 3"),
+  // or clears it when there's nothing to count.
+  function setCount(selector, count) {
+    const node = $(selector);
+    if (!node) return;
+    node.textContent = count ? String(count) : "";
+  }
+
   async function renderFriendsList() {
     const box = $("#friends-list");
     if (!box) return;
     box.innerHTML = "";
     let friends;
     try { friends = await getFriends(); } catch (e) { return; }
+    setCount("#friends-count", friends.length);
     if (!friends.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search the Add Friend tab to add someone."]));
       return;
@@ -404,6 +413,7 @@
     box.innerHTML = "";
     let friends;
     try { friends = await getFriends(); } catch (e) { return; }
+    setCount("#messages-count", friends.length);
     if (!friends.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No conversations yet. Add a friend to start chatting."]));
       return;
