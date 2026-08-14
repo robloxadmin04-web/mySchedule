@@ -238,6 +238,12 @@
 .chat-modal > input{ margin: 12px 16px; width: auto; }
 .chat-modal .conv-list{ padding: 0 12px 12px; }
 
+/* ---------- Confirm dialog (custom, replaces window.confirm/alert) ---------- */
+.confirm-dialog{ max-width: 340px; }
+.confirm-dialog-message{ margin: 4px 16px 16px; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+.confirm-dialog-actions{ display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px 16px; }
+.confirm-dialog-actions .btn-primary.danger{ background: #c94a4a; border-color: #c94a4a; color: #fff; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px){
   #view-chat{ height: calc(100vh - 60px); }
