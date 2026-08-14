@@ -720,17 +720,21 @@
     }
   }
 
+  let newMessageSearchToken = 0;
+
   async function renderNewMessageResults(query) {
     const box = $("#friend-search-results");
     if (!box) return;
-    box.innerHTML = "";
+    const myToken = ++newMessageSearchToken;
     const q = (query || "").trim();
 
     let friends = [];
     try { friends = await getFriends(); } catch (e) {  }
+    if (myToken !== newMessageSearchToken) return; // a newer search started while we awaited
     const friendIds = new Set(friends.map(f => f.id));
 
     if (!q) {
+      box.innerHTML = "";
       if (!friends.length) {
         box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search a username to add someone."]));
         return;
@@ -741,6 +745,9 @@
 
     let results = [];
     try { results = await searchUsers(q); } catch (e) {  }
+    if (myToken !== newMessageSearchToken) return; // a newer search started while we awaited
+
+    box.innerHTML = "";
     if (!results.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No users found."]));
       return;
