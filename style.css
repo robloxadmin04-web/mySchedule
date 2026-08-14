@@ -138,9 +138,6 @@ input:focus,select:focus,textarea:focus{ border-color:var(--text); }
 .icon-btn{ width:38px; height:38px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text) !important; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all var(--dur) var(--ease); flex-shrink:0; text-decoration:none; }
 .icon-btn:hover{ border-color:var(--text); }
 
-/* Theme toggle: explicit sun/moon SVGs (stroke=currentColor) so the
-   icon always has visible contrast in both themes, instead of a
-   mask-image that can render blank. */
 .theme-toggle svg{ display:none; }
 .theme-toggle .icon-moon{ display:block; }
 [data-theme="dark"] .theme-toggle .icon-sun{ display:block; }
@@ -400,7 +397,6 @@ table.import-table input[type="checkbox"]{ width:16px; height:16px; }
   table{ font-size:12px; }
   td input, td select{ width:70px; }
 
-  /* Mobile: toolbar stacks, tabs scroll horizontally */
   .toolbar{ flex-direction:column; align-items:stretch; gap:8px; }
   .toolbar-right{ flex-direction:column; gap:8px; }
   .toolbar-right input, .toolbar-right select{ width:100%; box-sizing:border-box; }
@@ -408,7 +404,6 @@ table.import-table input[type="checkbox"]{ width:16px; height:16px; }
   .tabs::-webkit-scrollbar{ display:none; }
   .tab{ font-size:12px; padding:6px 11px; flex-shrink:0; }
 
-  /* Assignments search/sort full width on mobile */
   #task-search{ width:100%; box-sizing:border-box; }
   #task-sort{ width:100%; box-sizing:border-box; }
 }
@@ -654,9 +649,6 @@ table.import-table input[type="checkbox"]{ width:16px; height:16px; }
   .ob-compare{grid-template-columns:1fr;}
 }
 
-/* ---------------------------------------------------------
-   FB-STYLE PROFILE VIEW
---------------------------------------------------------- */
 .fb-profile{ max-width:900px; margin:0 auto; }
 .fb-cover{
   position:relative; height:220px; border-radius:var(--radius);
