@@ -35,6 +35,17 @@
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
+  // Builds a <span class="avatar"> that shows the person's real
+  // profile photo when one is set (synced from their dashboard
+  // profile into Supabase's avatar_url), falling back to initials
+  // only when no photo exists.
+  function avatarNode(name, avatarUrl, extraClass) {
+    const cls = "avatar" + (extraClass ? " " + extraClass : "");
+    if (avatarUrl) {
+      return el("span", { class: cls }, [el("img", { src: avatarUrl, alt: name || "Avatar" })]);
+    }
+    return el("span", { class: cls }, [initialsOf(name)]);
+  }
   function fmtClockTime(iso) {
     if (!iso) return "";
     const d = new Date(iso);
@@ -349,7 +360,7 @@
       const p = r.profiles;
       const name = p.display_name || p.username;
       box.appendChild(el("div", { class: "request-item" }, [
-        el("span", { class: "avatar" }, [initialsOf(name)]),
+        avatarNode(name, p.avatar_url),
         el("div", { class: "request-item-body" }, [
           el("div", { class: "request-item-name" }, [name]),
           el("div", { class: "request-item-sub" }, ["Wants to be friends"])
@@ -384,7 +395,7 @@
     opts = opts || {};
     const name = friend.display_name || friend.username;
     const children = [
-      el("span", { class: "avatar online" }, [initialsOf(name)]),
+      avatarNode(name, friend.avatar_url, "online"),
       el("div", { class: "conv-item-body" }, [
         el("div", { class: "conv-item-top" }, [
           el("span", { class: "conv-item-name" }, [name]),
@@ -474,7 +485,7 @@
       const name = u.display_name || u.username;
       const row = el("div", { class: "conv-item-row" }, [
         el("div", { class: "conv-item", style: "cursor:default;" }, [
-          el("span", { class: "avatar" }, [initialsOf(name)]),
+          avatarNode(name, u.avatar_url),
           el("div", { class: "conv-item-body" }, [
             el("div", { class: "conv-item-name" }, [name])
           ])
@@ -496,7 +507,12 @@
     $("#convo-empty").classList.add("hidden");
     $("#chat-panel").classList.remove("hidden");
     $("#chat-with-name").textContent = name;
-    $("#chat-with-avatar").textContent = initialsOf(name);
+    const headerAvatar = $("#chat-with-avatar");
+    if (headerAvatar) {
+      headerAvatar.innerHTML = "";
+      if (friend.avatar_url) headerAvatar.appendChild(el("img", { src: friend.avatar_url, alt: name }));
+      else headerAvatar.textContent = initialsOf(name);
+    }
     $("#chat-with-status").textContent = "Online";
 
     $("#chat-shell").classList.add("conv-open");
