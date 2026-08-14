@@ -1384,6 +1384,7 @@
       [activeChatSettings.archived ? "Unarchive" : "Archive chat"]));
     actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); confirmBlockToggle(); } },
       [activeChatSettings.blocked ? "Unblock" : "Block"]));
+    actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); confirmUnfriend(); } }, ["Unfriend"]));
     actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); openReportModal(); } }, ["Report"]));
     actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); confirmDeleteConversation(); } }, ["Delete conversation"]));
     body.appendChild(actions);
@@ -1453,6 +1454,24 @@
       await setArchived(activeChatFriend.id, willArchive);
       showToast(willArchive ? "Chat archived" : "Chat unarchived");
       if (willArchive) backToList();
+      renderMessagesList();
+    } catch (e) { showToast(e.message); }
+  }
+
+  async function confirmUnfriend() {
+    if (!activeChatFriend) return;
+    const name = activeChatFriend.display_name || activeChatFriend.username;
+    const ok = await showConfirmDialog({
+      title: "Unfriend " + name + "?",
+      message: "You'll no longer be friends. You can send a new friend request later if you change your mind.",
+      confirmLabel: "Unfriend",
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await unfriend(activeChatFriend.id);
+      showToast("Unfriended " + name);
+      backToList();
       renderMessagesList();
     } catch (e) { showToast(e.message); }
   }
