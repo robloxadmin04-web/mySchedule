@@ -91,7 +91,8 @@
   let onlineUserIds = new Set(); // presence: currently-online user ids
   let presenceChannel = null;
   let typingTimeout = null;
-  let activeChatSettings = { muted_until: null, blocked: false, blockedByThem: false };
+  let activeChatSettings = { muted_until: null, blocked: false, blockedByThem: false, archived: false };
+  let archivedFriendIds = new Set();
   const REACTION_EMOJI = ["\u2764\ufe0f", "\ud83d\udc4d", "\ud83d\ude02", "\ud83d\ude2e", "\ud83d\ude22", "\ud83d\ude21"];
 
   function showToast(msg) {
@@ -418,7 +419,7 @@
     renderChatLog(activeMessages);
   }
 
-  // ---- 4c. CHAT SETTINGS (mute / block) --------------------------------
+  // ---- 4c. CHAT SETTINGS (mute / block / archive) --------------------------------
   async function loadChatSettings(friendId) {
     const [{ data: mine }, { data: theirs }] = await Promise.all([
       sb.from("chat_settings").select("*").eq("user_id", currentUser.id).eq("friend_id", friendId).maybeSingle(),
@@ -427,9 +428,42 @@
     activeChatSettings = {
       muted_until: mine && mine.muted_until ? mine.muted_until : null,
       blocked: !!(mine && mine.blocked),
-      blockedByThem: !!(theirs && theirs.blocked)
+      blockedByThem: !!(theirs && theirs.blocked),
+      archived: !!(mine && mine.archived)
     };
     return activeChatSettings;
+  }
+
+  // Fetches the set of friend_ids the current user has archived, used to
+  // hide those conversations from the main list.
+  async function loadArchivedFriendIds() {
+    const { data, error } = await sb.from("chat_settings")
+      .select("friend_id").eq("user_id", currentUser.id).eq("archived", true);
+    if (error) { archivedFriendIds = new Set(); return archivedFriendIds; }
+    archivedFriendIds = new Set((data || []).map(r => r.friend_id));
+    return archivedFriendIds;
+  }
+
+  async function setArchived(friendId, archived) {
+    const { error } = await sb.from("chat_settings")
+      .upsert({ user_id: currentUser.id, friend_id: friendId, archived, updated_at: new Date().toISOString() },
+        { onConflict: "user_id,friend_id" });
+    if (error) throw error;
+    activeChatSettings.archived = archived;
+    if (archived) archivedFriendIds.add(friendId); else archivedFriendIds.delete(friendId);
+  }
+
+  // Clears the conversation for the current user only (hides existing
+  // messages on their side; the other person's copy is untouched).
+  async function clearConversationForMe(friendId) {
+    const chatId = chatIdFor(currentUser.id, friendId);
+    const { data, error } = await sb.from("messages").select("id, deleted_for").eq("chat_id", chatId);
+    if (error) throw error;
+    const rows = (data || []).filter(m => !(m.deleted_for || []).includes(currentUser.id));
+    for (const row of rows) {
+      const arr = (row.deleted_for || []).concat(currentUser.id);
+      await sb.from("messages").update({ deleted_for: arr }).eq("id", row.id);
+    }
   }
 
   async function setMute(friendId, minsOrMode) {
@@ -646,6 +680,8 @@
       return;
     }
 
+    await loadArchivedFriendIds();
+
     const withLast = await Promise.all(friends.map(async f => {
       const last = await getLastMessage(f.id);
       return { friend: f, last };
@@ -656,9 +692,47 @@
       return tb - ta;
     });
 
-    messagesCache = withLast;
+    messagesCache = withLast.filter(({ friend }) => !archivedFriendIds.has(friend.id));
     renderFilteredMessages($("#conv-search-input") ? $("#conv-search-input").value : "");
+    renderArchivedList(withLast.filter(({ friend }) => archivedFriendIds.has(friend.id)));
   }
+
+  // Archived chats overlay: shows archived conversations with a quick
+  // "Unarchive" action; tapping the row opens the chat directly.
+  function renderArchivedList(rows) {
+    const box = $("#archived-list");
+    if (!box) return;
+    box.innerHTML = "";
+    if (!rows || !rows.length) {
+      box.appendChild(el("p", { class: "list-empty" }, ["No archived chats."]));
+      return;
+    }
+    rows.forEach(({ friend, last }) => {
+      const name = friend.display_name || friend.username;
+      const preview = last ? ((last.sender_id === currentUser.id ? "You: " : "") + last.text) : "Tap to start chatting";
+      const row = el("div", { class: "conv-item-row" }, [
+        el("div", {
+          class: "conv-item", onclick: () => { closeArchivedModal(); openChat(friend); }
+        }, [
+          avatarNode(name, friend.avatar_url, "online"),
+          el("div", { class: "conv-item-body" }, [
+            el("div", { class: "conv-item-top" }, [el("span", { class: "conv-item-name" }, [name])]),
+            el("div", { class: "conv-item-preview" }, [preview])
+          ])
+        ]),
+        el("button", {
+          type: "button", class: "btn btn-outline btn-sm", onclick: async () => {
+            try { await setArchived(friend.id, false); showToast("Chat unarchived"); renderMessagesList(); }
+            catch (e) { alert(e.message); }
+          }
+        }, ["Unarchive"])
+      ]);
+      box.appendChild(row);
+    });
+  }
+
+  function openArchivedModal() { $("#archived-backdrop").classList.remove("hidden"); }
+  function closeArchivedModal() { $("#archived-backdrop").classList.add("hidden"); }
 
   function renderFilteredMessages(query) {
     const box = $("#messages-list");
@@ -1365,9 +1439,12 @@
     actions.appendChild(el("button", { type: "button", onclick: () => { closeProfilePanel(); openConvoSearch(); } }, ["Search in conversation"]));
     actions.appendChild(el("button", { type: "button", onclick: () => { closeProfilePanel(); openMuteModal(); } },
       [activeChatSettings.muted_until ? "Muted \u2014 change" : "Mute notifications"]));
+    actions.appendChild(el("button", { type: "button", onclick: () => { closeProfilePanel(); confirmArchiveToggle(); } },
+      [activeChatSettings.archived ? "Unarchive" : "Archive chat"]));
     actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); confirmBlockToggle(); } },
       [activeChatSettings.blocked ? "Unblock" : "Block"]));
     actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); openReportModal(); } }, ["Report"]));
+    actions.appendChild(el("button", { type: "button", class: "danger", onclick: () => { closeProfilePanel(); confirmDeleteConversation(); } }, ["Delete conversation"]));
     body.appendChild(actions);
     if (activeChatSettings.muted_until) {
       body.appendChild(el("div", { class: "profile-panel-state" }, [
@@ -1387,6 +1464,29 @@
     if (!confirm(msg)) return;
     try { await setBlocked(activeChatFriend.id, willBlock); updateBlockedBar(); showToast(willBlock ? "Blocked" : "Unblocked"); }
     catch (e) { alert(e.message); }
+  }
+
+  async function confirmArchiveToggle() {
+    if (!activeChatFriend) return;
+    const willArchive = !activeChatSettings.archived;
+    try {
+      await setArchived(activeChatFriend.id, willArchive);
+      showToast(willArchive ? "Chat archived" : "Chat unarchived");
+      if (willArchive) backToList();
+      renderMessagesList();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function confirmDeleteConversation() {
+    if (!activeChatFriend) return;
+    const name = activeChatFriend.display_name || activeChatFriend.username;
+    if (!confirm("Delete this conversation with " + name + "? This removes it from your side only and can't be undone.")) return;
+    try {
+      await clearConversationForMe(activeChatFriend.id);
+      showToast("Conversation deleted");
+      backToList();
+      renderMessagesList();
+    } catch (e) { alert(e.message); }
   }
 
   function openMuteModal() { $("#mute-backdrop").classList.remove("hidden"); }
@@ -1430,6 +1530,13 @@
     if (profileClose) profileClose.addEventListener("click", closeProfilePanel);
     const profileBackdrop = $("#profile-panel-backdrop");
     if (profileBackdrop) profileBackdrop.addEventListener("click", (e) => { if (e.target === profileBackdrop) closeProfilePanel(); });
+
+    const archivedBtn = $("#archived-btn");
+    if (archivedBtn) archivedBtn.addEventListener("click", openArchivedModal);
+    const archivedClose = $("#archived-close");
+    if (archivedClose) archivedClose.addEventListener("click", closeArchivedModal);
+    const archivedBackdrop = $("#archived-backdrop");
+    if (archivedBackdrop) archivedBackdrop.addEventListener("click", (e) => { if (e.target === archivedBackdrop) closeArchivedModal(); });
 
     const searchBtn = $("#chat-search-btn");
     if (searchBtn) searchBtn.addEventListener("click", openConvoSearch);
