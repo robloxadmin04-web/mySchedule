@@ -43,23 +43,35 @@
           <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
         </div>
 
-        <section class="card" id="friend-add-card">
+        <div class="tabbar" id="chat-tabbar" role="tablist">
+          <button class="tab-btn active" data-tab="messages" role="tab" aria-selected="true">Messages</button>
+          <button class="tab-btn" data-tab="friends" role="tab" aria-selected="false">Friends</button>
+          <button class="tab-btn" data-tab="requests" role="tab" aria-selected="false">Requests</button>
+          <button class="tab-btn" data-tab="add" role="tab" aria-selected="false">Add Friend</button>
+        </div>
+
+        <section class="card tab-panel active" id="panel-messages" data-panel="messages">
+          <h3 class="card-title">Messages</h3>
+          <div id="messages-list"><p class="list-empty">No conversations yet. Add a friend to start chatting.</p></div>
+        </section>
+
+        <section class="card tab-panel" id="panel-friends" data-panel="friends">
+          <h3 class="card-title">Your Friends</h3>
+          <div id="friends-list"><p class="list-empty">No friends yet. Search the Add Friend tab to add someone.</p></div>
+        </section>
+
+        <section class="card tab-panel" id="panel-requests" data-panel="requests">
+          <h3 class="card-title">Friend Requests</h3>
+          <div id="friend-requests-list"><p class="list-empty">No pending friend requests.</p></div>
+        </section>
+
+        <section class="card tab-panel" id="panel-add" data-panel="add">
           <h3 class="card-title">Add a Friend</h3>
           <div class="field-row">
             <input type="text" id="friend-search-input" placeholder="Search username...">
             <button class="btn btn-primary btn-sm" id="friend-search-btn">Search</button>
           </div>
           <div id="friend-search-results"></div>
-        </section>
-
-        <section class="card" id="friend-requests-card">
-          <h3 class="card-title">Friend Requests</h3>
-          <div id="friend-requests-list"><p class="list-empty">No pending friend requests.</p></div>
-        </section>
-
-        <section class="card" id="friend-list-card">
-          <h3 class="card-title">Your Friends</h3>
-          <div id="friends-list"><p class="list-empty">No friends yet. Search above to add someone.</p></div>
         </section>
 
         <div id="chat-panel" class="hidden">
