@@ -342,16 +342,20 @@
     return data;
   }
 
+  // Fetches the most recent message NOT hidden by "delete for me" /
+  // "delete conversation" for the current user — otherwise a deleted
+  // conversation would still show its old last message as the preview.
   async function getLastMessage(friendId) {
     const chatId = chatIdFor(currentUser.id, friendId);
     const { data, error } = await sb
       .from("messages")
-      .select("text, created_at, sender_id")
+      .select("text, created_at, sender_id, deleted_for")
       .eq("chat_id", chatId)
       .order("created_at", { ascending: false })
-      .limit(1);
+      .limit(20);
     if (error || !data || !data.length) return null;
-    return data[0];
+    const visible = data.find(m => !(m.deleted_for || []).includes(currentUser.id));
+    return visible || null;
   }
 
   async function sendMessage(friendId, text, extra) {
