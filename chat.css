@@ -12,12 +12,8 @@
   letter-spacing: -.01em;
 }
 
-/* ---------- Theme toggle icon (always visible, high contrast) ---------- */
-.theme-toggle{ position: relative; }
-.theme-toggle svg{ display: none; }
-.theme-toggle .icon-moon{ display: block; }
-[data-theme="dark"] .theme-toggle .icon-sun{ display: block; }
-[data-theme="dark"] .theme-toggle .icon-moon{ display: none; }
+/* Theme toggle sun/moon visibility rules now live in style.css so
+   index.html and chat.html share one definition. */
 
 /* ---------- Header / auth card ---------- */
 .auth-card{ max-width: 480px; padding: 22px; margin-top: 4px; }
