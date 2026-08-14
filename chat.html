@@ -122,10 +122,16 @@
                     <span class="chat-with-status" id="chat-with-status">Online</span>
                   </div>
                 </div>
-                <div id="chat-log" class="chat-log"></div>
+                <div class="chat-log-wrap">
+                  <div id="chat-log" class="chat-log"></div>
+                  <button class="scroll-bottom-btn hidden" id="scroll-bottom-btn" type="button">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                    <span id="scroll-bottom-label">New messages</span>
+                  </button>
+                </div>
                 <div class="chat-input-row">
-                  <input type="text" id="chat-input" placeholder="Write a message...">
-                  <button class="btn btn-primary" id="chat-send-btn">Send</button>
+                  <textarea id="chat-input" rows="1" placeholder="Write a message..."></textarea>
+                  <button class="btn btn-primary" id="chat-send-btn" disabled>Send</button>
                 </div>
               </div>
             </section>
