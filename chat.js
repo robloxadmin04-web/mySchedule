@@ -723,7 +723,7 @@
         el("button", {
           type: "button", class: "btn btn-outline btn-sm", onclick: async () => {
             try { await setArchived(friend.id, false); showToast("Chat unarchived"); renderMessagesList(); }
-            catch (e) { alert(e.message); }
+            catch (e) { showToast(e.message); }
           }
         }, ["Unarchive"])
       ]);
@@ -1122,8 +1122,8 @@
     items.push(["React", () => { openReactionPicker(anchorEl, msg); }]);
     items.push(["Copy", () => { copyMessageText(msg); closeMessageMenu(); }]);
     if (mine) items.push(["Edit", () => { startEdit(msg); closeMessageMenu(); }]);
-    if (mine) items.push(["Delete for everyone", () => { deleteForEveryone(msg.id).catch(e => alert(e.message)); closeMessageMenu(); }, true]);
-    items.push(["Delete for me", () => { deleteForMe(msg.id).then(() => renderChatLog(activeMessages)).catch(e => alert(e.message)); closeMessageMenu(); }, !mine]);
+    if (mine) items.push(["Delete for everyone", () => { deleteForEveryone(msg.id).catch(e => showToast(e.message)); closeMessageMenu(); }, true]);
+    items.push(["Delete for me", () => { deleteForMe(msg.id).then(() => renderChatLog(activeMessages)).catch(e => showToast(e.message)); closeMessageMenu(); }, !mine]);
     items.forEach(([label, fn, danger]) => {
       menu.appendChild(el("button", { type: "button", class: danger ? "danger" : "", onclick: fn }, [label]));
     });
@@ -1173,7 +1173,7 @@
           const val = ta.value.trim();
           if (!val) return;
           try { await editMessageText(msg.id, val); msg.text = val; msg.edited_at = new Date().toISOString(); updateMessageInLog(msg); }
-          catch (e) { alert(e.message); }
+          catch (e) { showToast(e.message); }
         } }, ["Save"])
       ])
     ]);
@@ -1246,7 +1246,7 @@
               appendMessageToLog(sent);
               renderMessagesList();
             }
-            catch (e) { alert(e.message); }
+            catch (e) { showToast(e.message); }
           }
         }, [
           el("div", { class: "conv-item-body" }, [
@@ -1321,7 +1321,7 @@
     const convSearchInput = $("#conv-search-input");
 
     if (googleSignInBtn) googleSignInBtn.addEventListener("click", async () => {
-      try { await signInWithGoogle(); } catch (e) { alert(e.message); }
+      try { await signInWithGoogle(); } catch (e) { showToast(e.message); }
     });
 
     if (signOutBtn) signOutBtn.addEventListener("click", signOut);
@@ -1383,7 +1383,7 @@
         const sent = await sendMessage(activeChatFriend.id, sendText, extra);
         appendMessageToLog(sent);
         renderMessagesList();
-      } catch (e) { alert(e.message); }
+      } catch (e) { showToast(e.message); }
     }
 
     if (sendBtn) sendBtn.addEventListener("click", doSend);
@@ -1455,15 +1455,56 @@
   }
   function closeProfilePanel() { $("#profile-panel-backdrop").classList.add("hidden"); }
 
+  // ---- Custom confirm dialog (replaces window.confirm for a consistent,
+  // on-brand UI). Returns a Promise<boolean> resolved when the user picks.
+  function showConfirmDialog({ title, message, confirmLabel, danger }) {
+    return new Promise((resolve) => {
+      const backdrop = $("#confirm-dialog-backdrop");
+      if (!backdrop) { resolve(false); return; }
+      $("#confirm-dialog-title").textContent = title || "Are you sure?";
+      $("#confirm-dialog-message").textContent = message || "";
+      const okBtn = $("#confirm-dialog-ok");
+      okBtn.textContent = confirmLabel || "Confirm";
+      okBtn.classList.toggle("danger", !!danger);
+
+      let done = false;
+      const finish = (result) => {
+        if (done) return;
+        done = true;
+        backdrop.classList.add("hidden");
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+        closeBtn.removeEventListener("click", onCancel);
+        backdrop.removeEventListener("click", onBackdrop);
+        resolve(result);
+      };
+      const onOk = () => finish(true);
+      const onCancel = () => finish(false);
+      const onBackdrop = (e) => { if (e.target === backdrop) finish(false); };
+
+      const cancelBtn = $("#confirm-dialog-cancel");
+      const closeBtn = $("#confirm-dialog-close");
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+      closeBtn.addEventListener("click", onCancel);
+      backdrop.addEventListener("click", onBackdrop);
+      backdrop.classList.remove("hidden");
+    });
+  }
+
   async function confirmBlockToggle() {
     if (!activeChatFriend) return;
     const willBlock = !activeChatSettings.blocked;
-    const msg = willBlock
-      ? "Block " + (activeChatFriend.display_name || activeChatFriend.username) + "? They won't be able to message you."
-      : "Unblock " + (activeChatFriend.display_name || activeChatFriend.username) + "?";
-    if (!confirm(msg)) return;
+    const name = activeChatFriend.display_name || activeChatFriend.username;
+    const ok = await showConfirmDialog({
+      title: willBlock ? "Block " + name + "?" : "Unblock " + name + "?",
+      message: willBlock ? "They won't be able to message you." : "They'll be able to message you again.",
+      confirmLabel: willBlock ? "Block" : "Unblock",
+      danger: willBlock
+    });
+    if (!ok) return;
     try { await setBlocked(activeChatFriend.id, willBlock); updateBlockedBar(); showToast(willBlock ? "Blocked" : "Unblocked"); }
-    catch (e) { alert(e.message); }
+    catch (e) { showToast(e.message); }
   }
 
   async function confirmArchiveToggle() {
@@ -1474,19 +1515,25 @@
       showToast(willArchive ? "Chat archived" : "Chat unarchived");
       if (willArchive) backToList();
       renderMessagesList();
-    } catch (e) { alert(e.message); }
+    } catch (e) { showToast(e.message); }
   }
 
   async function confirmDeleteConversation() {
     if (!activeChatFriend) return;
     const name = activeChatFriend.display_name || activeChatFriend.username;
-    if (!confirm("Delete this conversation with " + name + "? This removes it from your side only and can't be undone.")) return;
+    const ok = await showConfirmDialog({
+      title: "Delete this conversation?",
+      message: "Your messages with " + name + " will be removed from your side only. This can't be undone.",
+      confirmLabel: "Delete",
+      danger: true
+    });
+    if (!ok) return;
     try {
       await clearConversationForMe(activeChatFriend.id);
       showToast("Conversation deleted");
       backToList();
       renderMessagesList();
-    } catch (e) { alert(e.message); }
+    } catch (e) { showToast(e.message); }
   }
 
   function openMuteModal() { $("#mute-backdrop").classList.remove("hidden"); }
@@ -1556,7 +1603,7 @@
       const btn = e.target.closest("button[data-mins]");
       if (!btn || !activeChatFriend) return;
       try { await setMute(activeChatFriend.id, btn.dataset.mins); showToast(btn.dataset.mins === "off" ? "Unmuted" : "Muted"); closeMuteModal(); }
-      catch (err) { alert(err.message); }
+      catch (err) { showToast(err.message); }
     });
 
     const reportClose = $("#report-close");
@@ -1568,7 +1615,7 @@
       const btn = e.target.closest("button[data-reason]");
       if (!btn || !activeChatFriend) return;
       try { await fileReport(activeChatFriend.id, btn.dataset.reason); showToast("Report submitted"); closeReportModal(); }
-      catch (err) { alert(err.message); }
+      catch (err) { showToast(err.message); }
     });
 
     // Attachments
