@@ -1,35 +1,16 @@
 /* ============================================================
-   mySchedule — Chat module (Supabase, Google sign-in)
+   Coursework — Chat page (Supabase, Google sign-in)
    ------------------------------------------------------------
-   HOW TO USE:
-   1. Add to chat.html <head>, BEFORE this file's <script> tag:
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   2. Add this file AFTER supabase-js:
-        <script src="chat.js"></script>
-   3. Fill in SUPABASE_URL and SUPABASE_ANON_KEY below
-      (Project Settings > API in your Supabase dashboard).
-   4. In your Supabase dashboard, enable the Google provider under
-      Authentication > Providers, and add this page's URL (and your
-      production URL) to Authentication > URL Configuration >
-      Redirect URLs.
-   5. Run supabase_friends_schema.sql in the Supabase SQL editor first.
-      Once signed in with Google here, the same Supabase session is
-      shared (via localStorage) with the rest of the app on this
-      origin — no separate login needed elsewhere.
-   6. PROFILE SYNC: whenever the user is signed in, this file reads
-      the dashboard's local profile (name + avatar, from index.html's
-      "coursework.state.v1" localStorage entry) and pushes it into
-      the Supabase "profiles" row (display_name, avatar_url), so
-      friends/chat always show whatever identity the user set on
-      their dashboard. If a user is signed in but hasn't set a
-      dashboard name yet, the existing Supabase profile is left as-is.
+   Fill in SUPABASE_URL / SUPABASE_ANON_KEY below (Project
+   Settings > API in your Supabase dashboard). Run
+   supabase_friends_schema.sql in the SQL editor first.
    ============================================================ */
 
 (function () {
   "use strict";
 
   // ---- 1. CONFIG -------------------------------------------------
-  const SUPABASE_URL = "https://lvdyxnygzbcnprdncpzx.supabase.co"; // e.g. https://xxxx.supabase.co
+  const SUPABASE_URL = "https://lvdyxnygzbcnprdncpzx.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2ZHl4bnlnemJjbnByZG5jcHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MTc3NDgsImV4cCI6MjEwMjE5Mzc0OH0.qWsRV2mcMCQ35o9Eyg4qHNzS1gzV9pSUh17bvbgCws8";
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -47,14 +28,21 @@
     (children || []).forEach(c => node.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
     return node;
   }
-
-  // chat.css expects an .avatar with 1-2 letter initials inside .list-row
   function initialsOf(nameOrUsername) {
     const s = (nameOrUsername || "?").trim();
     if (!s) return "?";
     const parts = s.split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  function fmtClockTime(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
   }
 
   let currentUser = null; // { id, email, username, display_name }
@@ -65,34 +53,59 @@
     return [uidA, uidB].sort().join("_");
   }
 
-  // ---- 1b. PROFILE SYNC (Coursework dashboard -> Supabase) --------
-  // The dashboard (index.html / script.js) keeps its own "profile"
-  // (name, avatar) in localStorage under this key, separate from the
-  // Supabase profiles table. Whenever we're signed in, push name/avatar
-  // from the dashboard's local profile into Supabase so friends/chat
-  // always show the same identity the user set on their dashboard.
+  // ---- 1b. THEME / APPEARANCE (shared with the dashboard) ---------
+  // The dashboard (index.html / script.js) keeps theme/density/radius
+  // in localStorage under this key. This page reads and updates only
+  // those fields, leaving everything else the dashboard stores alone.
   const DASHBOARD_STORAGE_KEY = "coursework.state.v1";
 
-  function readDashboardProfile() {
+  function readDashboardState() {
     try {
       const raw = localStorage.getItem(DASHBOARD_STORAGE_KEY);
-      if (!raw) return null;
-      const state = JSON.parse(raw);
-      const p = state && state.profile;
-      if (!p) return null;
-      return {
-        name: (p.name || "").trim(),
-        avatar: p.avatar || ""
-      };
-    } catch (e) {
-      return null;
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function applyAppearance() {
+    const state = readDashboardState();
+    const s = (state && state.settings) || {};
+    let theme = s.theme || "light";
+    if (theme === "system") {
+      theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
+    document.documentElement.setAttribute("data-theme", theme);
+    if (s.density) document.documentElement.setAttribute("data-density", s.density);
+    if (s.radius) document.documentElement.setAttribute("data-radius", s.radius);
+    document.documentElement.setAttribute("data-motion", s.reduceMotion ? "reduce" : "normal");
+  }
+
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      const state = readDashboardState() || {};
+      state.settings = state.settings || {};
+      state.settings.theme = next;
+      localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* best effort — theme still applied for this page */ }
+  }
+
+  function openSidebarMobile() { $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); }
+  function closeSidebarMobile() { $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); }
+
+  // ---- 1c. PROFILE SYNC (Coursework dashboard -> Supabase) --------
+  function readDashboardProfile() {
+    const state = readDashboardState();
+    const p = state && state.profile;
+    if (!p) return null;
+    return { name: (p.name || "").trim(), avatar: p.avatar || "" };
   }
 
   async function syncProfileFromDashboard() {
     if (!currentUser) return;
     const local = readDashboardProfile();
-    if (!local || !local.name) return; // nothing set on dashboard yet
+    if (!local || !local.name) return;
 
     const needsNameSync = local.name !== currentUser.display_name;
     const needsAvatarSync = local.avatar !== (currentUser.avatar_url || "");
@@ -107,8 +120,7 @@
     if (error) { console.error("Profile sync failed:", error.message); return; }
 
     currentUser = data;
-    // Reflect the synced identity anywhere our own name/avatar shows.
-    renderBrandIdentity();
+    renderIdentity();
     if (activeChatFriend) $("#chat-with-name") && ($("#chat-with-name").textContent = activeChatFriend.display_name || activeChatFriend.username);
   }
 
@@ -135,16 +147,11 @@
 
     renderAuthState();
 
-    // Live-sync if the dashboard profile changes in another tab
-    // (or in this same tab, if index.html and chat.html ever share a page).
     window.addEventListener("storage", (e) => {
-      if (e.key === DASHBOARD_STORAGE_KEY) syncProfileFromDashboard();
+      if (e.key === DASHBOARD_STORAGE_KEY) { syncProfileFromDashboard(); applyAppearance(); }
     });
   }
 
-  // Removes "#access_token=..." (and any stray extra "#..." fragments)
-  // from the address bar once Supabase has read the session from it,
-  // so it never carries over into the next sign-in redirect.
   function scrubUrlHash() {
     if (window.location.hash) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -157,12 +164,6 @@
   }
 
   async function signInWithGoogle() {
-    // IMPORTANT: use a clean redirect URL with no leftover hash/query.
-    // If a previous OAuth attempt left "#access_token=..." in the URL,
-    // window.location.href would carry that stale fragment along, and
-    // the new "#access_token=..." from this login gets appended after
-    // it — producing a URL with multiple "#" fragments that Supabase's
-    // session parser cannot read, silently breaking sign-in.
     const cleanUrl = window.location.origin + window.location.pathname;
     const { data, error } = await sb.auth.signInWithOAuth({
       provider: "google",
@@ -192,10 +193,7 @@
   }
 
   async function sendFriendRequest(toId) {
-    const { error } = await sb.from("friend_requests").insert({
-      from_id: currentUser.id,
-      to_id: toId
-    });
+    const { error } = await sb.from("friend_requests").insert({ from_id: currentUser.id, to_id: toId });
     if (error) throw error;
   }
 
@@ -246,13 +244,22 @@
     return data;
   }
 
+  async function getLastMessage(friendId) {
+    const chatId = chatIdFor(currentUser.id, friendId);
+    const { data, error } = await sb
+      .from("messages")
+      .select("text, created_at, sender_id")
+      .eq("chat_id", chatId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error || !data || !data.length) return null;
+    return data[0];
+  }
+
   async function sendMessage(friendId, text) {
     const chatId = chatIdFor(currentUser.id, friendId);
     const { error } = await sb.from("messages").insert({
-      chat_id: chatId,
-      sender_id: currentUser.id,
-      recipient_id: friendId,
-      text: text.trim()
+      chat_id: chatId, sender_id: currentUser.id, recipient_id: friendId, text: text.trim()
     });
     if (error) throw error;
   }
@@ -283,37 +290,35 @@
     } else {
       authBox.classList.remove("hidden");
       appBox.classList.add("hidden");
+      closeChat();
     }
-    renderBrandIdentity();
+    renderIdentity();
   }
 
-  // Shows the signed-in user's own synced profile (avatar + name) in the
-  // sidebar brand slot, in place of the static "C" / "Coursework" — so
-  // it's easy to see at a glance whether the dashboard profile synced.
-  function renderBrandIdentity() {
-    const mark = $("#brand-mark");
-    const name = $("#brand-name");
-    if (!mark || !name) return;
+  // Reflects the signed-in user's synced identity in the sidebar's
+  // existing mini-profile slot (no new UI — just filling it in).
+  function renderIdentity() {
+    const avatarBox = $("#mini-avatar");
+    const nameBox = $("#mini-name");
+    const subBox = $("#mini-sub");
+    if (!avatarBox || !nameBox || !subBox) return;
 
     if (!currentUser) {
-      mark.innerHTML = "C";
-      name.textContent = "Coursework";
+      avatarBox.textContent = "?";
+      nameBox.textContent = "Not signed in";
+      subBox.textContent = "Sign in to chat";
       return;
     }
 
-    const displayName = currentUser.display_name || currentUser.username || "Coursework";
-    name.textContent = displayName;
+    const displayName = currentUser.display_name || currentUser.username || "Student";
+    nameBox.textContent = displayName;
+    subBox.textContent = currentUser.username ? "@" + currentUser.username : "Signed in";
 
     if (currentUser.avatar_url) {
-      mark.innerHTML = "";
-      mark.appendChild(el("img", {
-        src: currentUser.avatar_url,
-        alt: displayName,
-        style: "width:100%;height:100%;object-fit:cover;border-radius:inherit;"
-      }));
+      avatarBox.innerHTML = "";
+      avatarBox.appendChild(el("img", { src: currentUser.avatar_url, alt: displayName }));
     } else {
-      mark.innerHTML = "";
-      mark.textContent = initialsOf(displayName);
+      avatarBox.textContent = initialsOf(displayName);
     }
   }
 
@@ -331,12 +336,13 @@
     requests.forEach(r => {
       const p = r.profiles;
       const name = p.display_name || p.username;
-      box.appendChild(el("div", { class: "list-row" }, [
-        el("div", { class: "list-row-id" }, [
-          el("span", { class: "avatar" }, [initialsOf(name)]),
-          el("span", { class: "list-row-name" }, [name])
+      box.appendChild(el("div", { class: "request-item" }, [
+        el("span", { class: "avatar" }, [initialsOf(name)]),
+        el("div", { class: "request-item-body" }, [
+          el("div", { class: "request-item-name" }, [name]),
+          el("div", { class: "request-item-sub" }, ["Wants to be friends"])
         ]),
-        el("div", { class: "list-row-actions" }, [
+        el("div", { class: "conv-item-actions" }, [
           el("button", { class: "btn btn-primary btn-sm", onclick: async () => { await acceptRequest(r.id); renderIncomingRequests(); renderFriendsList(); renderMessagesList(); } }, ["Accept"]),
           el("button", { class: "btn btn-ghost btn-sm", onclick: async () => { await declineRequest(r.id); renderIncomingRequests(); } }, ["Decline"])
         ])
@@ -344,30 +350,42 @@
     });
   }
 
-  // Small numbered dot on the "Requests" tab so pending requests are
-  // visible without needing to switch tabs first.
   function updateRequestsBadge(count) {
     const tab = document.querySelector('.tab-btn[data-tab="requests"]');
     if (!tab) return;
     let badge = tab.querySelector(".tab-badge");
-    if (!count) {
-      if (badge) badge.remove();
-      return;
-    }
-    if (!badge) {
-      badge = el("span", { class: "tab-badge" }, [String(count)]);
-      tab.appendChild(badge);
-    } else {
-      badge.textContent = String(count);
-    }
+    if (!count) { if (badge) badge.remove(); return; }
+    if (!badge) { badge = el("span", { class: "tab-badge" }, [String(count)]); tab.appendChild(badge); }
+    else badge.textContent = String(count);
   }
 
-  // Sets the small mono count next to a panel's title (e.g. "Messages 3"),
-  // or clears it when there's nothing to count.
   function setCount(selector, count) {
     const node = $(selector);
     if (!node) return;
     node.textContent = count ? String(count) : "";
+  }
+
+  // Builds one clickable conversation row (avatar, name, online dot,
+  // optional preview + time). No separate "Open" button — the whole
+  // row is the click target, Messenger-style.
+  function buildConvItem(friend, opts) {
+    opts = opts || {};
+    const name = friend.display_name || friend.username;
+    const children = [
+      el("span", { class: "avatar online" }, [initialsOf(name)]),
+      el("div", { class: "conv-item-body" }, [
+        el("div", { class: "conv-item-top" }, [
+          el("span", { class: "conv-item-name" }, [name]),
+          opts.time ? el("span", { class: "conv-item-time" }, [opts.time]) : null
+        ].filter(Boolean)),
+        el("div", { class: "conv-item-preview" }, [opts.preview || "Tap to start chatting"])
+      ])
+    ];
+    return el("button", {
+      class: "conv-item" + (activeChatFriend && activeChatFriend.id === friend.id ? " selected" : ""),
+      type: "button",
+      onclick: () => openChat(friend)
+    }, children);
   }
 
   async function renderFriendsList() {
@@ -378,19 +396,16 @@
     try { friends = await getFriends(); } catch (e) { return; }
     setCount("#friends-count", friends.length);
     if (!friends.length) {
-      box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search the Add Friend tab to add someone."]));
+      box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search Add People to add someone."]));
       return;
     }
     friends.forEach(f => {
-      const name = f.display_name || f.username;
-      box.appendChild(el("div", { class: "list-row" }, [
-        el("div", { class: "list-row-id", onclick: () => openChat(f) }, [
-          el("span", { class: "avatar online" }, [initialsOf(name)]),
-          el("span", { class: "list-row-name" }, [name])
-        ]),
-        el("div", { class: "list-row-actions" }, [
-          el("button", { class: "btn btn-ghost btn-sm", onclick: () => openChat(f) }, ["Chat"]),
-          el("button", { class: "btn btn-ghost btn-sm", onclick: async () => {
+      const row = el("div", { class: "conv-item-row" }, [
+        buildConvItem(f),
+        el("div", { class: "conv-item-actions" }, [
+          el("button", { class: "btn btn-ghost btn-sm", onclick: async (e) => {
+            e.stopPropagation();
+            const name = f.display_name || f.username;
             if (confirm(`Unfriend ${name}?`)) {
               await unfriend(f.id);
               renderFriendsList();
@@ -399,36 +414,39 @@
             }
           } }, ["Unfriend"])
         ])
-      ]));
+      ]);
+      box.appendChild(row);
     });
   }
 
-  // "Messages" tab: a lighter conversation-starter view over the same
-  // friends list, without the friend-management actions (Unfriend) —
-  // just the people you can open a chat with. Placeholder for a real
-  // last-message preview if/when message history is surfaced here.
+  // "Messages" tab: friends with a last-message preview + time,
+  // sorted most-recent-first when history exists.
   async function renderMessagesList() {
     const box = $("#messages-list");
     if (!box) return;
-    box.innerHTML = "";
     let friends;
     try { friends = await getFriends(); } catch (e) { return; }
     setCount("#messages-count", friends.length);
+    box.innerHTML = "";
     if (!friends.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No conversations yet. Add a friend to start chatting."]));
       return;
     }
-    friends.forEach(f => {
-      const name = f.display_name || f.username;
-      box.appendChild(el("div", { class: "list-row" }, [
-        el("div", { class: "list-row-id", onclick: () => openChat(f) }, [
-          el("span", { class: "avatar online" }, [initialsOf(name)]),
-          el("span", { class: "list-row-name" }, [name])
-        ]),
-        el("div", { class: "list-row-actions" }, [
-          el("button", { class: "btn btn-ghost btn-sm", onclick: () => openChat(f) }, ["Open"])
-        ])
-      ]));
+
+    const withLast = await Promise.all(friends.map(async f => {
+      const last = await getLastMessage(f.id);
+      return { friend: f, last };
+    }));
+    withLast.sort((a, b) => {
+      const ta = a.last ? new Date(a.last.created_at).getTime() : 0;
+      const tb = b.last ? new Date(b.last.created_at).getTime() : 0;
+      return tb - ta;
+    });
+
+    withLast.forEach(({ friend, last }) => {
+      const preview = last ? ((last.sender_id === currentUser.id ? "You: " : "") + last.text) : null;
+      const time = last ? fmtClockTime(last.created_at) : null;
+      box.appendChild(buildConvItem(friend, { preview, time }));
     });
   }
 
@@ -442,26 +460,35 @@
     }
     results.forEach(u => {
       const name = u.display_name || u.username;
-      box.appendChild(el("div", { class: "list-row" }, [
-        el("div", { class: "list-row-id" }, [
+      const row = el("div", { class: "conv-item-row" }, [
+        el("div", { class: "conv-item", style: "cursor:default;" }, [
           el("span", { class: "avatar" }, [initialsOf(name)]),
-          el("span", { class: "list-row-name" }, [name])
+          el("div", { class: "conv-item-body" }, [
+            el("div", { class: "conv-item-name" }, [name])
+          ])
         ]),
-        el("div", { class: "list-row-actions" }, [
-          el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
-            e.target.disabled = true;
-            e.target.textContent = "Sent";
-            try { await sendFriendRequest(u.id); } catch (err) { e.target.textContent = "Error"; }
-          } }, ["Add Friend"])
-        ])
-      ]));
+        el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
+          e.target.disabled = true;
+          e.target.textContent = "Sent";
+          try { await sendFriendRequest(u.id); } catch (err) { e.target.textContent = "Error"; }
+        } }, ["Add Friend"])
+      ]);
+      box.appendChild(row);
     });
   }
 
   async function openChat(friend) {
     activeChatFriend = friend;
+    const name = friend.display_name || friend.username;
+
+    $("#convo-empty").classList.add("hidden");
     $("#chat-panel").classList.remove("hidden");
-    $("#chat-with-name").textContent = friend.display_name || friend.username;
+    $("#chat-with-name").textContent = name;
+    $("#chat-with-avatar").textContent = initialsOf(name);
+    $("#chat-with-status").textContent = "Online";
+
+    $("#chat-shell").classList.add("conv-open");
+
     const log = $("#chat-log");
     log.innerHTML = "<p class='list-empty'>Loading messages...</p>";
     const messages = await loadMessages(friend.id);
@@ -471,13 +498,28 @@
     subscribeToChat(friend.id, (msg) => {
       appendMessageToLog(msg);
       log.scrollTop = log.scrollHeight;
+      renderMessagesList();
     });
+
+    renderMessagesList();
   }
 
   function closeChat() {
     activeChatFriend = null;
-    $("#chat-panel").classList.add("hidden");
+    const panel = $("#chat-panel");
+    const empty = $("#convo-empty");
+    const shell = $("#chat-shell");
+    if (panel) panel.classList.add("hidden");
+    if (empty) empty.classList.remove("hidden");
+    if (shell) shell.classList.remove("conv-open");
     if (messageChannel) { sb.removeChannel(messageChannel); messageChannel = null; }
+  }
+
+  // On mobile the back button returns to the list without ending the
+  // conversation (subscription stays alive); Close ends it outright.
+  function backToList() {
+    const shell = $("#chat-shell");
+    if (shell) shell.classList.remove("conv-open");
   }
 
   function appendMessageToLog(msg) {
@@ -494,6 +536,7 @@
     const searchBtn = $("#friend-search-btn");
     const sendBtn = $("#chat-send-btn");
     const closeChatBtn = $("#chat-close-btn");
+    const backBtn = $("#chat-back-btn");
 
     if (googleSignInBtn) googleSignInBtn.addEventListener("click", async () => {
       try { await signInWithGoogle(); } catch (e) { alert(e.message); }
@@ -505,6 +548,10 @@
       const q = $("#friend-search-input").value;
       try { renderSearchResults(await searchUsers(q)); } catch (e) { alert(e.message); }
     });
+    const searchInput = $("#friend-search-input");
+    if (searchInput) searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchBtn && searchBtn.click();
+    });
 
     if (sendBtn) sendBtn.addEventListener("click", async () => {
       const input = $("#chat-input");
@@ -513,14 +560,17 @@
       input.value = "";
       try { await sendMessage(activeChatFriend.id, text); } catch (e) { alert(e.message); }
     });
+    const chatInput = $("#chat-input");
+    if (chatInput) chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendBtn && sendBtn.click();
+    });
 
     if (closeChatBtn) closeChatBtn.addEventListener("click", closeChat);
+    if (backBtn) backBtn.addEventListener("click", backToList);
 
     wireTabEvents();
   }
 
-  // Switches between the Messages / Friends / Requests / Add Friend
-  // panels so they're never all shown crowded together at once.
   function wireTabEvents() {
     const tabbar = $("#chat-tabbar");
     if (!tabbar) return;
@@ -539,64 +589,22 @@
     });
   }
 
+  function wireChromeEvents() {
+    const hamburger = $("#hamburger");
+    const scrim = $("#scrim");
+    const themeToggle = $("#theme-toggle");
+    if (hamburger) hamburger.addEventListener("click", openSidebarMobile);
+    if (scrim) scrim.addEventListener("click", closeSidebarMobile);
+    if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
+  }
+
   // ---- 7. INIT -------------------------------------------------------
+  applyAppearance();
   document.addEventListener("DOMContentLoaded", () => {
+    applyAppearance();
+    wireChromeEvents();
     wireFriendsEvents();
     initAuth();
   });
 
 })();
-
-/* ============================================================
-   INDEX_HTML_SNIPPET — add this markup to index.html
-
-   1. New nav button, next to your other .nav-item buttons:
-
-   <button class="nav-item" data-view="friends">
-     <span class="nav-ico" data-ico="user"></span>Friends
-   </button>
-
-   2. New view section, alongside your other <div class="view" id="view-...">
-      sections (give it the same "view" class so switchView() shows/hides it):
-
-   <div class="view" id="view-friends">
-
-     <div id="friends-auth">
-       <h2>Sign in to use Friends</h2>
-       <button class="btn btn-primary" id="google-signin-btn">Sign in with Google</button>
-     </div>
-
-     <div id="friends-app" class="hidden">
-       <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
-
-       <h3>Add a Friend</h3>
-       <input type="text" id="friend-search-input" placeholder="Search username...">
-       <button class="btn btn-primary btn-sm" id="friend-search-btn">Search</button>
-       <div id="friend-search-results"></div>
-
-       <h3>Friend Requests</h3>
-       <div id="friend-requests-list"></div>
-
-       <h3>Your Friends</h3>
-       <div id="friends-list"></div>
-
-       <div id="chat-panel" class="hidden">
-         <div class="chat-header">
-           <span id="chat-with-name"></span>
-           <button class="btn btn-ghost btn-sm" id="chat-close-btn">Close</button>
-         </div>
-         <div id="chat-log" class="chat-log"></div>
-         <div class="chat-input-row">
-           <input type="text" id="chat-input" placeholder="Type a message...">
-           <button class="btn btn-primary" id="chat-send-btn">Send</button>
-         </div>
-       </div>
-     </div>
-   </div>
-
-   3. In <head>, ADD BEFORE this file's script tag:
-   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-   4. At the end of <body>, add:
-   <script src="chat.js"></script>
-   ============================================================ */
