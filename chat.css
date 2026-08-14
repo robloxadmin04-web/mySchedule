@@ -352,8 +352,9 @@ input[type="text"]:focus{
 .list-row{
   display: flex;
   align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px 10px;
+  row-gap: 10px;
   padding: 12px 10px;
   border-radius: var(--radius-sm);
   transition: background var(--dur-1) var(--ease);
@@ -361,11 +362,30 @@ input[type="text"]:focus{
 .list-row:hover{ background: var(--cloud); }
 .list-row + .list-row{ border-top: 1px solid var(--mist); }
 
-/* buttons that follow the name in a row: keep them grouped and
-   let them wrap onto their own line together on narrow cards
-   instead of crushing the name column */
-.list-row .btn{ flex-shrink: 0; }
-.list-row-name{ flex-basis: 140px; }
+.list-row-id{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  cursor: default;
+}
+#friend-list-card .list-row-id{ cursor: pointer; }
+
+.list-row-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* on narrow cards, keep identity full-width on its own line and
+   let the action group sit together on the next line, flush left
+   under the avatar, so buttons never split away from each other */
+@media (max-width: 420px){
+  .list-row-id{ flex-basis: 100%; }
+  .list-row-actions{ margin-left: 46px; }
+}
 
 .avatar{
   width: 34px; height: 34px;
@@ -392,18 +412,10 @@ input[type="text"]:focus{
 .list-row-name{
   font-size: 13.5px;
   font-weight: 500;
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.list-row-actions{
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
 }
 
 #friend-list-card .list-row{ padding: 12px 10px; }
