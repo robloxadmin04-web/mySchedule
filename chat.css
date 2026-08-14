@@ -157,28 +157,64 @@
 #chat-with-name{ font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-with-status{ font-size: 11.5px; color: var(--text-faint); }
 
+.chat-log-wrap{ position: relative; flex: 1; min-height: 0; display: flex; }
+
 .chat-log{
-  flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 2px;
   background: var(--bg-sunken);
 }
-.msg-row{ display: flex; flex-direction: column; max-width: 68%; align-self: flex-start; }
-.msg-row.mine{ align-self: flex-end; align-items: flex-end; }
+
+/* ---------- Date separators ---------- */
+.date-sep{
+  display: flex; align-items: center; gap: 10px;
+  margin: 14px 0 10px; color: var(--text-faint); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.date-sep::before, .date-sep::after{ content: ''; flex: 1; height: 1px; background: var(--border); }
+.chat-log > .date-sep:first-child{ margin-top: 0; }
+
+/* ---------- Grouped messages ---------- */
+.msg-group{ display: flex; flex-direction: column; max-width: 68%; align-self: flex-start; margin-top: 8px; }
+.msg-group.mine{ align-self: flex-end; align-items: flex-end; }
+.msg-row{ display: flex; flex-direction: column; }
+.msg-row + .msg-row{ margin-top: 2px; }
 .msg{
   padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.4;
   background: var(--surface); border: 1px solid var(--border); color: var(--text);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 4px; white-space: pre-wrap; word-break: break-word;
 }
-.msg-row.mine .msg{
+.msg-group.mine .msg{
   background: var(--accent); color: var(--accent-contrast);
   border-color: var(--accent); border-bottom-right-radius: 4px; border-bottom-left-radius: 14px;
 }
+/* Tighten corners between consecutive bubbles from the same sender */
+.msg-group:not(.mine) .msg-row:not(:first-child) .msg{ border-top-left-radius: 4px; }
+.msg-group:not(.mine) .msg-row:not(:last-child) .msg{ border-bottom-left-radius: 4px; }
+.msg-group.mine .msg-row:not(:first-child) .msg{ border-top-right-radius: 4px; }
+.msg-group.mine .msg-row:not(:last-child) .msg{ border-bottom-right-radius: 4px; }
 .msg-time{ font-size: 10.5px; color: var(--text-faint); margin-top: 3px; padding: 0 3px; }
 
+/* ---------- Scroll to bottom ---------- */
+.scroll-bottom-btn{
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+  color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+.scroll-bottom-btn:hover{ background: var(--surface-2); }
+.scroll-bottom-btn.hidden{ display: none; }
+
 .chat-input-row{
-  display: flex; align-items: center; gap: 8px; padding: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: flex-end; gap: 8px; padding: 12px; border-top: 1px solid var(--border);
   background: var(--surface); flex-shrink: 0;
 }
-.chat-input-row input{ flex: 1; }
+.chat-input-row textarea{
+  flex: 1; resize: none; max-height: 120px; padding: 9px 12px; line-height: 1.4;
+  font-family: inherit; font-size: 13.5px;
+}
+.chat-input-row .btn:disabled{ opacity: .45; cursor: default; }
 
 /* ---------- New message / requests overlays ---------- */
 .chat-modal-backdrop{
