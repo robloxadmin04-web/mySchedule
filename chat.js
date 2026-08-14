@@ -59,6 +59,7 @@
   let currentUser = null; // { id, email, username, display_name }
   let activeChatFriend = null; // profile object of friend currently chatting with
   let messageChannel = null; // realtime subscription handle
+  let messagesCache = []; // last-rendered {friend, last} list, for client-side search filtering
 
   function chatIdFor(uidA, uidB) {
     return [uidA, uidB].sort().join("_");
@@ -335,7 +336,6 @@
     if (currentUser) {
       authBox.classList.add("hidden");
       appBox.classList.remove("hidden");
-      renderFriendsList();
       renderIncomingRequests();
       renderMessagesList();
     } else {
@@ -366,7 +366,7 @@
           el("div", { class: "request-item-sub" }, ["Wants to be friends"])
         ]),
         el("div", { class: "conv-item-actions" }, [
-          el("button", { class: "btn btn-primary btn-sm", onclick: async () => { await acceptRequest(r.id); renderIncomingRequests(); renderFriendsList(); renderMessagesList(); } }, ["Accept"]),
+          el("button", { class: "btn btn-primary btn-sm", onclick: async () => { await acceptRequest(r.id); renderIncomingRequests(); renderMessagesList(); } }, ["Accept"]),
           el("button", { class: "btn btn-ghost btn-sm", onclick: async () => { await declineRequest(r.id); renderIncomingRequests(); } }, ["Decline"])
         ])
       ]));
@@ -374,12 +374,10 @@
   }
 
   function updateRequestsBadge(count) {
-    const tab = document.querySelector('.tab-btn[data-tab="requests"]');
-    if (!tab) return;
-    let badge = tab.querySelector(".tab-badge");
-    if (!count) { if (badge) badge.remove(); return; }
-    if (!badge) { badge = el("span", { class: "tab-badge" }, [String(count)]); tab.appendChild(badge); }
-    else badge.textContent = String(count);
+    const badge = $("#req-badge");
+    if (!badge) return;
+    badge.classList.toggle("hidden", !count);
+    badge.textContent = count ? String(count) : "";
   }
 
   function setCount(selector, count) {
@@ -411,48 +409,19 @@
     }, children);
   }
 
-  async function renderFriendsList() {
-    const box = $("#friends-list");
-    if (!box) return;
-    box.innerHTML = "";
-    let friends;
-    try { friends = await getFriends(); } catch (e) { return; }
-    setCount("#friends-count", friends.length);
-    if (!friends.length) {
-      box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search Add People to add someone."]));
-      return;
-    }
-    friends.forEach(f => {
-      const row = el("div", { class: "conv-item-row" }, [
-        buildConvItem(f),
-        el("div", { class: "conv-item-actions" }, [
-          el("button", { class: "btn btn-ghost btn-sm", onclick: async (e) => {
-            e.stopPropagation();
-            const name = f.display_name || f.username;
-            if (confirm(`Unfriend ${name}?`)) {
-              await unfriend(f.id);
-              renderFriendsList();
-              renderMessagesList();
-              if (activeChatFriend && activeChatFriend.id === f.id) closeChat();
-            }
-          } }, ["Unfriend"])
-        ])
-      ]);
-      box.appendChild(row);
-    });
-  }
-
-  // "Messages" tab: friends with a last-message preview + time,
-  // sorted most-recent-first when history exists.
+  // Conversation list: friends with a last-message preview + time,
+  // sorted most-recent-first when history exists. Empty state matches
+  // the empty state shown in the conversation pane.
   async function renderMessagesList() {
     const box = $("#messages-list");
     if (!box) return;
     let friends;
     try { friends = await getFriends(); } catch (e) { return; }
-    setCount("#messages-count", friends.length);
     box.innerHTML = "";
     if (!friends.length) {
-      box.appendChild(el("p", { class: "list-empty" }, ["No conversations yet. Add a friend to start chatting."]));
+      messagesCache = [];
+      box.appendChild(el("p", { class: "list-empty" }, ["No conversations yet. Start one with \u201cNew message\u201d."]));
+      toggleEmptyState();
       return;
     }
 
@@ -466,38 +435,100 @@
       return tb - ta;
     });
 
-    withLast.forEach(({ friend, last }) => {
+    messagesCache = withLast;
+    renderFilteredMessages($("#conv-search-input") ? $("#conv-search-input").value : "");
+  }
+
+  function renderFilteredMessages(query) {
+    const box = $("#messages-list");
+    if (!box) return;
+    const q = (query || "").trim().toLowerCase();
+    const rows = q
+      ? messagesCache.filter(({ friend }) => (friend.display_name || friend.username || "").toLowerCase().includes(q))
+      : messagesCache;
+
+    box.innerHTML = "";
+    if (!rows.length) {
+      box.appendChild(el("p", { class: "list-empty" }, [q ? "No conversations match." : "No conversations yet. Start one with \u201cNew message\u201d."]));
+      return;
+    }
+    rows.forEach(({ friend, last }) => {
       const preview = last ? ((last.sender_id === currentUser.id ? "You: " : "") + last.text) : null;
       const time = last ? fmtClockTime(last.created_at) : null;
       box.appendChild(buildConvItem(friend, { preview, time }));
     });
   }
 
-  function renderSearchResults(results) {
+  function toggleEmptyState() {
+    const hasConvos = messagesCache.length > 0;
+    const empty = $("#convo-empty");
+    const panel = $("#chat-panel");
+    if (!empty || !panel) return;
+    if (!hasConvos && !activeChatFriend) {
+      empty.querySelector(".convo-empty-title").textContent = "No conversations yet";
+      empty.querySelector(".muted.small").textContent = "Start a conversation with your classmates and friends.";
+    }
+  }
+
+  // "New message" search: shows friends when the box is empty (tap to
+  // open instantly) and matching users (friend or not) when typing.
+  // Non-friends get an "Add Friend" action instead of a chat row.
+  async function renderNewMessageResults(query) {
     const box = $("#friend-search-results");
     if (!box) return;
     box.innerHTML = "";
+    const q = (query || "").trim();
+
+    let friends = [];
+    try { friends = await getFriends(); } catch (e) { /* ignore */ }
+    const friendIds = new Set(friends.map(f => f.id));
+
+    if (!q) {
+      if (!friends.length) {
+        box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search a username to add someone."]));
+        return;
+      }
+      friends.forEach(f => box.appendChild(buildNewMessageRow(f, true)));
+      return;
+    }
+
+    let results = [];
+    try { results = await searchUsers(q); } catch (e) { /* ignore */ }
     if (!results.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No users found."]));
       return;
     }
-    results.forEach(u => {
-      const name = u.display_name || u.username;
-      const row = el("div", { class: "conv-item-row" }, [
-        el("div", { class: "conv-item", style: "cursor:default;" }, [
-          avatarNode(name, u.avatar_url),
+    results.forEach(u => box.appendChild(buildNewMessageRow(u, friendIds.has(u.id))));
+  }
+
+  function buildNewMessageRow(user, isFriend) {
+    const name = user.display_name || user.username;
+    if (isFriend) {
+      return el("div", { class: "conv-item-row" }, [
+        el("button", {
+          class: "conv-item", type: "button",
+          onclick: () => { closeNewMessageModal(); openChat(user); }
+        }, [
+          avatarNode(name, user.avatar_url),
           el("div", { class: "conv-item-body" }, [
             el("div", { class: "conv-item-name" }, [name])
           ])
-        ]),
-        el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
-          e.target.disabled = true;
-          e.target.textContent = "Sent";
-          try { await sendFriendRequest(u.id); } catch (err) { e.target.textContent = "Error"; }
-        } }, ["Add Friend"])
+        ])
       ]);
-      box.appendChild(row);
-    });
+    }
+    return el("div", { class: "conv-item-row" }, [
+      el("div", { class: "conv-item", style: "cursor:default;" }, [
+        avatarNode(name, user.avatar_url),
+        el("div", { class: "conv-item-body" }, [
+          el("div", { class: "conv-item-name" }, [name])
+        ])
+      ]),
+      el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
+        e.target.disabled = true;
+        e.target.textContent = "Sent";
+        try { await sendFriendRequest(user.id); } catch (err) { e.target.textContent = "Error"; }
+      } }, ["Add Friend"])
+    ]);
   }
 
   async function openChat(friend) {
@@ -554,17 +585,43 @@
     const log = $("#chat-log");
     if (!log) return;
     const mine = msg.sender_id === currentUser.id;
-    log.appendChild(el("div", { class: "msg" + (mine ? " mine" : "") }, [msg.text]));
+    log.appendChild(el("div", { class: "msg-row" + (mine ? " mine" : "") }, [
+      el("div", { class: "msg" }, [msg.text]),
+      el("div", { class: "msg-time" }, [fmtClockTime(msg.created_at)])
+    ]));
   }
 
   // ---- 6. WIRE UP EVENTS ------------------------------------------------
+  function openNewMessageModal() {
+    $("#new-message-backdrop").classList.remove("hidden");
+    const input = $("#friend-search-input");
+    if (input) { input.value = ""; input.focus(); }
+    renderNewMessageResults("");
+  }
+  function closeNewMessageModal() {
+    $("#new-message-backdrop").classList.add("hidden");
+  }
+  function openRequestsModal() {
+    $("#requests-backdrop").classList.remove("hidden");
+    renderIncomingRequests();
+  }
+  function closeRequestsModal() {
+    $("#requests-backdrop").classList.add("hidden");
+  }
+
   function wireFriendsEvents() {
     const googleSignInBtn = $("#google-signin-btn");
     const signOutBtn = $("#friends-signout-btn");
-    const searchBtn = $("#friend-search-btn");
     const sendBtn = $("#chat-send-btn");
-    const closeChatBtn = $("#chat-close-btn");
     const backBtn = $("#chat-back-btn");
+    const newMessageBtn = $("#new-message-btn");
+    const newMessageEmptyBtn = $("#convo-empty-new-btn");
+    const newMessageClose = $("#new-message-close");
+    const newMessageBackdrop = $("#new-message-backdrop");
+    const requestsBtn = $("#requests-btn");
+    const requestsClose = $("#requests-close");
+    const requestsBackdrop = $("#requests-backdrop");
+    const convSearchInput = $("#conv-search-input");
 
     if (googleSignInBtn) googleSignInBtn.addEventListener("click", async () => {
       try { await signInWithGoogle(); } catch (e) { alert(e.message); }
@@ -572,13 +629,26 @@
 
     if (signOutBtn) signOutBtn.addEventListener("click", signOut);
 
-    if (searchBtn) searchBtn.addEventListener("click", async () => {
-      const q = $("#friend-search-input").value;
-      try { renderSearchResults(await searchUsers(q)); } catch (e) { alert(e.message); }
+    if (newMessageBtn) newMessageBtn.addEventListener("click", openNewMessageModal);
+    if (newMessageEmptyBtn) newMessageEmptyBtn.addEventListener("click", openNewMessageModal);
+    if (newMessageClose) newMessageClose.addEventListener("click", closeNewMessageModal);
+    if (newMessageBackdrop) newMessageBackdrop.addEventListener("click", (e) => {
+      if (e.target === newMessageBackdrop) closeNewMessageModal();
     });
+
+    if (requestsBtn) requestsBtn.addEventListener("click", openRequestsModal);
+    if (requestsClose) requestsClose.addEventListener("click", closeRequestsModal);
+    if (requestsBackdrop) requestsBackdrop.addEventListener("click", (e) => {
+      if (e.target === requestsBackdrop) closeRequestsModal();
+    });
+
     const searchInput = $("#friend-search-input");
-    if (searchInput) searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") searchBtn && searchBtn.click();
+    if (searchInput) searchInput.addEventListener("input", () => {
+      renderNewMessageResults(searchInput.value);
+    });
+
+    if (convSearchInput) convSearchInput.addEventListener("input", () => {
+      renderFilteredMessages(convSearchInput.value);
     });
 
     if (sendBtn) sendBtn.addEventListener("click", async () => {
@@ -593,28 +663,7 @@
       if (e.key === "Enter") sendBtn && sendBtn.click();
     });
 
-    if (closeChatBtn) closeChatBtn.addEventListener("click", closeChat);
     if (backBtn) backBtn.addEventListener("click", backToList);
-
-    wireTabEvents();
-  }
-
-  function wireTabEvents() {
-    const tabbar = $("#chat-tabbar");
-    if (!tabbar) return;
-    $all(".tab-btn", tabbar).forEach(btn => {
-      btn.addEventListener("click", () => {
-        const target = btn.getAttribute("data-tab");
-        $all(".tab-btn", tabbar).forEach(b => {
-          const isActive = b === btn;
-          b.classList.toggle("active", isActive);
-          b.setAttribute("aria-selected", isActive ? "true" : "false");
-        });
-        $all(".tab-panel").forEach(panel => {
-          panel.classList.toggle("active", panel.getAttribute("data-panel") === target);
-        });
-      });
-    });
   }
 
   function wireChromeEvents() {
