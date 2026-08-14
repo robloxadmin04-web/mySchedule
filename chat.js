@@ -1,21 +1,11 @@
-/* ============================================================
-   Coursework — Chat page (Supabase, Google sign-in)
-   ------------------------------------------------------------
-   Fill in SUPABASE_URL / SUPABASE_ANON_KEY below (Project
-   Settings > API in your Supabase dashboard). Run
-   supabase_friends_schema.sql in the SQL editor first.
-   ============================================================ */
-
 (function () {
   "use strict";
 
-  // ---- 1. CONFIG -------------------------------------------------
   const SUPABASE_URL = "https://lvdyxnygzbcnprdncpzx.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2ZHl4bnlnemJjbnByZG5jcHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MTc3NDgsImV4cCI6MjEwMjE5Mzc0OH0.qWsRV2mcMCQ35o9Eyg4qHNzS1gzV9pSUh17bvbgCws8";
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // ---- small local helpers (mirrors script.js style) --------------
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $all = (sel, root) => Array.from((root || document).querySelectorAll(sel));
   function el(tag, attrs, children) {
@@ -35,10 +25,7 @@
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
-  // Builds a <span class="avatar"> that shows the person's real
-  // profile photo when one is set (synced from their dashboard
-  // profile into Supabase's avatar_url), falling back to initials
-  // only when no photo exists.
+
   function avatarNode(name, avatarUrl, extraClass) {
     const cls = "avatar" + (extraClass ? " " + extraClass : "");
     if (avatarUrl) {
@@ -70,8 +57,7 @@
     if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString([], { weekday: "long" });
     return d.toLocaleDateString([], { month: "long", day: "numeric", year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
   }
-  // Two messages group together (no repeated name/avatar, single
-  // timestamp) when same sender and within 3 minutes of each other.
+
   const GROUP_WINDOW_MS = 3 * 60 * 1000;
   function sameGroup(a, b) {
     if (!a || !b) return false;
@@ -79,16 +65,16 @@
     return Math.abs(new Date(b.created_at) - new Date(a.created_at)) < GROUP_WINDOW_MS;
   }
 
-  let currentUser = null; // { id, email, username, display_name }
-  let activeChatFriend = null; // profile object of friend currently chatting with
-  let messageChannel = null; // realtime subscription handle
-  let messagesCache = []; // last-rendered {friend, last} list, for client-side search filtering
-  let activeMessages = []; // full message list for the open conversation, oldest -> newest
-  let unseenWhileScrolledUp = 0; // count for the floating "N new messages" button
-  let reactionsByMessage = {}; // message_id -> [{user_id, emoji}]
-  let replyingToMsg = null; // message object currently being replied to
-  let pendingAttachment = null; // { file, kind: 'image'|'file' } queued before send
-  let onlineUserIds = new Set(); // presence: currently-online user ids
+  let currentUser = null;
+  let activeChatFriend = null;
+  let messageChannel = null;
+  let messagesCache = [];
+  let activeMessages = [];
+  let unseenWhileScrolledUp = 0;
+  let reactionsByMessage = {};
+  let replyingToMsg = null;
+  let pendingAttachment = null;
+  let onlineUserIds = new Set();
   let presenceChannel = null;
   let typingTimeout = null;
   let activeChatSettings = { muted_until: null, blocked: false, blockedByThem: false, archived: false };
@@ -108,10 +94,6 @@
     return [uidA, uidB].sort().join("_");
   }
 
-  // ---- 1b. THEME / APPEARANCE (shared with the dashboard) ---------
-  // The dashboard (index.html / script.js) keeps theme/density/radius
-  // in localStorage under this key. This page reads and updates only
-  // those fields, leaving everything else the dashboard stores alone.
   const DASHBOARD_STORAGE_KEY = "coursework.state.v1";
 
   function readDashboardState() {
@@ -121,7 +103,6 @@
     } catch (e) { return null; }
   }
 
-  // Mirrors index.html's applyBranding(): sidebar logo + app name.
   function applyBranding() {
     const state = readDashboardState();
     const b = (state && state.brand) || { name: "Coursework", logo: "" };
@@ -137,9 +118,6 @@
     }
   }
 
-  // Mirrors index.html's mini-profile rendering: the signed-in-to-the
-  // -dashboard identity (name/program/avatar set in Profile/Settings),
-  // not the Google account used for chat sign-in — same as index.html.
   function applyMiniProfile() {
     const state = readDashboardState();
     const p = (state && state.profile) || {};
@@ -184,13 +162,12 @@
       state.settings = state.settings || {};
       state.settings.theme = next;
       localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(state));
-    } catch (e) { /* best effort — theme still applied for this page */ }
+    } catch (e) {  }
   }
 
   function openSidebarMobile() { $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); }
   function closeSidebarMobile() { $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); }
 
-  // ---- 1c. PROFILE SYNC (Coursework dashboard -> Supabase) --------
   function readDashboardProfile() {
     const state = readDashboardState();
     const p = state && state.profile;
@@ -220,7 +197,6 @@
     if (activeChatFriend) $("#chat-with-name") && ($("#chat-with-name").textContent = activeChatFriend.display_name || activeChatFriend.username);
   }
 
-  // ---- 2. AUTH -----------------------------------------------------
   async function initAuth() {
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
@@ -278,7 +254,6 @@
     renderAuthState();
   }
 
-  // ---- 3. FRIEND SEARCH / REQUESTS ---------------------------------
   async function searchUsers(query) {
     if (!query.trim()) return [];
     const { data, error } = await sb
@@ -331,7 +306,6 @@
     await sb.from("friends").delete().eq("user_id", friendId).eq("friend_id", currentUser.id);
   }
 
-  // ---- 4. CHAT -------------------------------------------------------
   async function loadMessages(friendId) {
     const chatId = chatIdFor(currentUser.id, friendId);
     const { data, error } = await sb
@@ -344,9 +318,6 @@
     return data;
   }
 
-  // Fetches the most recent message NOT hidden by "delete for me" /
-  // "delete conversation" for the current user — otherwise a deleted
-  // conversation would still show its old last message as the preview.
   async function getLastMessage(friendId) {
     const chatId = chatIdFor(currentUser.id, friendId);
     const { data, error } = await sb
@@ -402,7 +373,6 @@
       .eq("chat_id", chatId).eq("recipient_id", currentUser.id).is("seen_at", null);
   }
 
-  // ---- 4b. REACTIONS --------------------------------------------------
   async function fetchReactionsFor(messageIds) {
     if (!messageIds.length) return {};
     const { data, error } = await sb.from("message_reactions")
@@ -425,7 +395,6 @@
     renderChatLog(activeMessages);
   }
 
-  // ---- 4c. CHAT SETTINGS (mute / block / archive) --------------------------------
   async function loadChatSettings(friendId) {
     const [{ data: mine }, { data: theirs }] = await Promise.all([
       sb.from("chat_settings").select("*").eq("user_id", currentUser.id).eq("friend_id", friendId).maybeSingle(),
@@ -440,8 +409,6 @@
     return activeChatSettings;
   }
 
-  // Fetches the set of friend_ids the current user has archived, used to
-  // hide those conversations from the main list.
   async function loadArchivedFriendIds() {
     const { data, error } = await sb.from("chat_settings")
       .select("friend_id").eq("user_id", currentUser.id).eq("archived", true);
@@ -459,12 +426,6 @@
     if (archived) archivedFriendIds.add(friendId); else archivedFriendIds.delete(friendId);
   }
 
-  // Clears the conversation for the current user only (hides existing
-  // messages on their side; the other person's copy is untouched).
-  // Clears the conversation for the current user only (hides existing
-  // messages on their side; the other person's copy is untouched).
-  // Uses a security-definer RPC because messages RLS normally only lets
-  // you update rows you sent — this needs to hide received ones too.
   async function clearConversationForMe(friendId) {
     const chatId = chatIdFor(currentUser.id, friendId);
     const { error } = await sb.rpc("delete_conversation_for_me", { p_chat_id: chatId });
@@ -495,7 +456,6 @@
     if (error) throw error;
   }
 
-  // ---- 4d. ATTACHMENTS --------------------------------------------------
   function fmtFileSize(bytes) {
     if (!bytes && bytes !== 0) return "";
     if (bytes < 1024) return bytes + " B";
@@ -517,7 +477,6 @@
     };
   }
 
-  // ---- 4e. TYPING + PRESENCE --------------------------------------------
   function broadcastTyping(friendId) {
     if (!messageChannel) return;
     messageChannel.send({ type: "broadcast", event: "typing", payload: { user_id: currentUser.id } });
@@ -588,7 +547,6 @@
     }, 150);
   }
 
-  // ---- 5. RENDERING ---------------------------------------------------
   function renderAuthState() {
     const authBox = $("#friends-auth");
     const appBox = $("#friends-app");
@@ -646,9 +604,6 @@
     node.textContent = count ? String(count) : "";
   }
 
-  // Builds one clickable conversation row (avatar, name, online dot,
-  // optional preview + time). No separate "Open" button — the whole
-  // row is the click target, Messenger-style.
   function buildConvItem(friend, opts) {
     opts = opts || {};
     const name = friend.display_name || friend.username;
@@ -669,9 +624,6 @@
     }, children);
   }
 
-  // Conversation list: friends with a last-message preview + time,
-  // sorted most-recent-first when history exists. Empty state matches
-  // the empty state shown in the conversation pane.
   async function renderMessagesList() {
     const box = $("#messages-list");
     if (!box) return;
@@ -702,8 +654,6 @@
     renderArchivedList(withLast.filter(({ friend }) => archivedFriendIds.has(friend.id)));
   }
 
-  // Archived chats overlay: shows archived conversations with a quick
-  // "Unarchive" action; tapping the row opens the chat directly.
   function renderArchivedList(rows) {
     const box = $("#archived-list");
     if (!box) return;
@@ -770,9 +720,6 @@
     }
   }
 
-  // "New message" search: shows friends when the box is empty (tap to
-  // open instantly) and matching users (friend or not) when typing.
-  // Non-friends get an "Add Friend" action instead of a chat row.
   async function renderNewMessageResults(query) {
     const box = $("#friend-search-results");
     if (!box) return;
@@ -780,7 +727,7 @@
     const q = (query || "").trim();
 
     let friends = [];
-    try { friends = await getFriends(); } catch (e) { /* ignore */ }
+    try { friends = await getFriends(); } catch (e) {  }
     const friendIds = new Set(friends.map(f => f.id));
 
     if (!q) {
@@ -793,7 +740,7 @@
     }
 
     let results = [];
-    try { results = await searchUsers(q); } catch (e) { /* ignore */ }
+    try { results = await searchUsers(q); } catch (e) {  }
     if (!results.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No users found."]));
       return;
@@ -862,7 +809,7 @@
     reactionsByMessage = await fetchReactionsFor(activeMessages.map(m => m.id));
     renderChatLog(activeMessages);
     scrollLogToBottom(log);
-    try { await markSeen(friend.id); } catch (e) { /* best effort */ }
+    try { await markSeen(friend.id); } catch (e) {  }
 
     subscribeToChat(friend.id,
       (msg) => { appendMessageToLog(msg); renderMessagesList(); if (msg.sender_id === friend.id) markSeen(friend.id).catch(() => {}); },
@@ -914,8 +861,6 @@
     if (messageChannel) { sb.removeChannel(messageChannel); messageChannel = null; }
   }
 
-  // On mobile the back button returns to the list without ending the
-  // conversation (subscription stays alive); Close ends it outright.
   function backToList() {
     const shell = $("#chat-shell");
     if (shell) shell.classList.remove("conv-open");
@@ -974,8 +919,7 @@
         el("a", { class: "msg-file-open", href: msg.attachment_url, target: "_blank", rel: "noopener" }, ["Open"])
       ]));
     }
-    // Skip the auto-generated caption ("Photo" / filename / share label)
-    // used only to satisfy the DB's not-empty text constraint.
+
     const isAutoCaption = (msg.attachment_url && (msg.text === "Photo" || msg.text === msg.attachment_name)) || !!msg.share_type;
     if (msg.text && !isAutoCaption) parts.push(document.createTextNode(msg.text));
 
@@ -1004,9 +948,6 @@
     return el("span", { class: "msg-status" }, ["\u2713"]);
   }
 
-  // Full re-render of the log: date separators + grouped consecutive
-  // bubbles from the same sender, timestamp only on the last bubble
-  // of each group. Cheap enough at the 200-message load cap.
   function renderChatLog(messages) {
     const log = $("#chat-log");
     if (!log) return;
@@ -1082,8 +1023,6 @@
     updateScrollBottomBtn();
   }
 
-  // Applies an UPDATE payload (edit, delete, or seen/delivered change)
-  // to the in-memory list and re-renders in place.
   function updateMessageInLog(msg) {
     const idx = activeMessages.findIndex(m => m.id === msg.id);
     if (idx === -1) return;
@@ -1091,7 +1030,6 @@
     renderChatLog(activeMessages);
   }
 
-  // ---- Message action menu (portal) ------------------------------------
   function closeMessageMenu() { $("#msg-menu").classList.add("hidden"); $("#msg-menu").innerHTML = ""; }
   function closeReactionPicker() { $("#reaction-picker").classList.add("hidden"); $("#reaction-picker").innerHTML = ""; }
 
@@ -1102,7 +1040,7 @@
     let left = Math.min(anchorRect.left, vw - w - 8);
     let top = anchorRect.bottom + 6;
     if (top + h > vh - 8) top = Math.max(8, anchorRect.top - h - 6);
-    if (window.innerWidth <= 760) { node.style.left = ""; node.style.top = ""; return; } // CSS bottom-sheet takes over
+    if (window.innerWidth <= 760) { node.style.left = ""; node.style.top = ""; return; }
     node.style.left = Math.max(8, left) + "px";
     node.style.top = top + "px";
   }
@@ -1190,7 +1128,6 @@
     ta.focus();
   }
 
-  // ---- Attachment picking / preview ----------------------------------
   function clearAttachment() {
     pendingAttachment = null;
     const strip = $("#attach-preview-strip");
@@ -1216,7 +1153,6 @@
     if (sendBtn) sendBtn.disabled = false;
   }
 
-  // ---- Share picker (schedule / assignment / subject, from dashboard state) --
   function getDashboardCollection(kind) {
     const state = readDashboardState() || {};
     const map = { schedule: state.schedule, assignment: state.assignments, subject: state.subjects };
@@ -1265,7 +1201,6 @@
   }
   function closeSharePicker() { $("#share-picker-backdrop").classList.add("hidden"); }
 
-  // ---- Image viewer -------------------------------------------------
   function openImageViewer(url, name) {
     const v = $("#image-viewer");
     $("#image-viewer-img").src = url;
@@ -1275,13 +1210,10 @@
   }
   function closeImageViewer() { $("#image-viewer").classList.add("hidden"); $("#image-viewer-img").src = ""; }
 
-  // Appends one incoming message to the in-memory list and re-renders.
-  // Keeps the user's scroll position if they've scrolled up to read
-  // history, and surfaces the floating "N new messages" button instead.
   function appendMessageToLog(msg) {
     const log = $("#chat-log");
     if (!log) return;
-    if (activeMessages.some(m => m.id === msg.id)) return; // dedupe: optimistic send + realtime echo
+    if (activeMessages.some(m => m.id === msg.id)) return;
     activeMessages.push(msg);
     const wasNearBottom = isNearBottom(log);
     renderChatLog(activeMessages);
@@ -1293,7 +1225,6 @@
     }
   }
 
-  // ---- 6. WIRE UP EVENTS ------------------------------------------------
   function openNewMessageModal() {
     $("#new-message-backdrop").classList.remove("hidden");
     const input = $("#friend-search-input");
@@ -1382,8 +1313,7 @@
           const uploaded = await uploadAttachment(activeChatFriend.id, att.file, att.kind);
           Object.assign(extra, uploaded);
         }
-        // messages.text has a not-empty check constraint — fall back to
-        // a short label when sending an attachment with no caption.
+
         const sendText = text.trim() || (extra.attachment_type === "image" ? "Photo" : extra.attachment_url ? (extra.attachment_name || "File") : "");
         const sent = await sendMessage(activeChatFriend.id, sendText, extra);
         appendMessageToLog(sent);
@@ -1404,7 +1334,7 @@
           e.preventDefault();
           doSend();
         }
-        // Shift+Enter falls through to the textarea's default newline.
+
       });
       updateSendState();
     }
@@ -1428,7 +1358,6 @@
     if (backBtn) backBtn.addEventListener("click", backToList);
   }
 
-  // ---- Profile panel ---------------------------------------------------
   function openProfilePanel() {
     if (!activeChatFriend) return;
     const f = activeChatFriend;
@@ -1460,8 +1389,6 @@
   }
   function closeProfilePanel() { $("#profile-panel-backdrop").classList.add("hidden"); }
 
-  // ---- Custom confirm dialog (replaces window.confirm for a consistent,
-  // on-brand UI). Returns a Promise<boolean> resolved when the user picks.
   function showConfirmDialog({ title, message, confirmLabel, danger }) {
     return new Promise((resolve) => {
       const backdrop = $("#confirm-dialog-backdrop");
@@ -1623,7 +1550,6 @@
       catch (err) { showToast(err.message); }
     });
 
-    // Attachments
     const attachBtn = $("#attach-btn");
     const attachMenu = $("#attach-menu");
     const attachFileInput = $("#attach-file-input");
@@ -1653,7 +1579,6 @@
     const shareBackdrop = $("#share-picker-backdrop");
     if (shareBackdrop) shareBackdrop.addEventListener("click", (e) => { if (e.target === shareBackdrop) closeSharePicker(); });
 
-    // Image viewer
     const ivClose = $("#image-viewer-close");
     if (ivClose) ivClose.addEventListener("click", closeImageViewer);
     const iv = $("#image-viewer");
@@ -1669,7 +1594,6 @@
     if (themeToggle) themeToggle.addEventListener("click", toggleTheme);
   }
 
-  // ---- 7. INIT -------------------------------------------------------
   applyAppearance();
   document.addEventListener("DOMContentLoaded", () => {
     applyAppearance();
