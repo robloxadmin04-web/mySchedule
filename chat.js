@@ -55,11 +55,36 @@
     if (sameDay) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     return d.toLocaleDateString([], { month: "short", day: "numeric" });
   }
+  function dateKey(iso) {
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? "" : d.toDateString();
+  }
+  function fmtDateSeparator(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    const now = new Date();
+    const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diffDays = Math.round((startOf(now) - startOf(d)) / 86400000);
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays > 1 && diffDays < 7) return d.toLocaleDateString([], { weekday: "long" });
+    return d.toLocaleDateString([], { month: "long", day: "numeric", year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+  }
+  // Two messages group together (no repeated name/avatar, single
+  // timestamp) when same sender and within 3 minutes of each other.
+  const GROUP_WINDOW_MS = 3 * 60 * 1000;
+  function sameGroup(a, b) {
+    if (!a || !b) return false;
+    if (a.sender_id !== b.sender_id) return false;
+    return Math.abs(new Date(b.created_at) - new Date(a.created_at)) < GROUP_WINDOW_MS;
+  }
 
   let currentUser = null; // { id, email, username, display_name }
   let activeChatFriend = null; // profile object of friend currently chatting with
   let messageChannel = null; // realtime subscription handle
   let messagesCache = []; // last-rendered {friend, last} list, for client-side search filtering
+  let activeMessages = []; // full message list for the open conversation, oldest -> newest
+  let unseenWhileScrolledUp = 0; // count for the floating "N new messages" button
 
   function chatIdFor(uidA, uidB) {
     return [uidA, uidB].sort().join("_");
@@ -550,13 +575,13 @@
 
     const log = $("#chat-log");
     log.innerHTML = "<p class='list-empty'>Loading messages...</p>";
-    const messages = await loadMessages(friend.id);
-    log.innerHTML = "";
-    messages.forEach(appendMessageToLog);
-    log.scrollTop = log.scrollHeight;
+    unseenWhileScrolledUp = 0;
+    updateScrollBottomBtn();
+    activeMessages = await loadMessages(friend.id);
+    renderChatLog(activeMessages);
+    scrollLogToBottom(log);
     subscribeToChat(friend.id, (msg) => {
       appendMessageToLog(msg);
-      log.scrollTop = log.scrollHeight;
       renderMessagesList();
     });
 
@@ -565,6 +590,8 @@
 
   function closeChat() {
     activeChatFriend = null;
+    activeMessages = [];
+    unseenWhileScrolledUp = 0;
     const panel = $("#chat-panel");
     const empty = $("#convo-empty");
     const shell = $("#chat-shell");
@@ -581,14 +608,76 @@
     if (shell) shell.classList.remove("conv-open");
   }
 
+  // Full re-render of the log: date separators + grouped consecutive
+  // bubbles from the same sender, timestamp only on the last bubble
+  // of each group. Cheap enough at the 200-message load cap.
+  function renderChatLog(messages) {
+    const log = $("#chat-log");
+    if (!log) return;
+    log.innerHTML = "";
+    let lastDateKey = null;
+    let groupEl = null;
+    let groupLast = null;
+
+    messages.forEach(msg => {
+      const mine = msg.sender_id === currentUser.id;
+      const dk = dateKey(msg.created_at);
+      if (dk !== lastDateKey) {
+        log.appendChild(el("div", { class: "date-sep" }, [fmtDateSeparator(msg.created_at)]));
+        lastDateKey = dk;
+        groupEl = null; groupLast = null;
+      }
+      if (!groupEl || !sameGroup(groupLast, msg)) {
+        groupEl = el("div", { class: "msg-group" + (mine ? " mine" : "") }, []);
+        log.appendChild(groupEl);
+      }
+      const prevTime = groupEl.querySelector(".msg-time");
+      if (prevTime) prevTime.remove();
+      groupEl.appendChild(el("div", { class: "msg-row" }, [
+        el("div", { class: "msg" }, [msg.text])
+      ]));
+      groupEl.appendChild(el("div", { class: "msg-time" }, [fmtClockTime(msg.created_at)]));
+      groupLast = msg;
+    });
+  }
+
+  function isNearBottom(log) {
+    return log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  }
+
+  function updateScrollBottomBtn() {
+    const btn = $("#scroll-bottom-btn");
+    const label = $("#scroll-bottom-label");
+    if (!btn) return;
+    if (unseenWhileScrolledUp > 0) {
+      btn.classList.remove("hidden");
+      if (label) label.textContent = unseenWhileScrolledUp === 1 ? "1 new message" : unseenWhileScrolledUp + " new messages";
+    } else {
+      btn.classList.add("hidden");
+    }
+  }
+
+  function scrollLogToBottom(log) {
+    log.scrollTop = log.scrollHeight;
+    unseenWhileScrolledUp = 0;
+    updateScrollBottomBtn();
+  }
+
+  // Appends one incoming message to the in-memory list and re-renders.
+  // Keeps the user's scroll position if they've scrolled up to read
+  // history, and surfaces the floating "N new messages" button instead.
   function appendMessageToLog(msg) {
     const log = $("#chat-log");
     if (!log) return;
-    const mine = msg.sender_id === currentUser.id;
-    log.appendChild(el("div", { class: "msg-row" + (mine ? " mine" : "") }, [
-      el("div", { class: "msg" }, [msg.text]),
-      el("div", { class: "msg-time" }, [fmtClockTime(msg.created_at)])
-    ]));
+    activeMessages.push(msg);
+    const wasNearBottom = isNearBottom(log);
+    renderChatLog(activeMessages);
+    if (wasNearBottom) {
+      scrollLogToBottom(log);
+    } else {
+      unseenWhileScrolledUp += 1;
+      updateScrollBottomBtn();
+    }
   }
 
   // ---- 6. WIRE UP EVENTS ------------------------------------------------
@@ -651,16 +740,52 @@
       renderFilteredMessages(convSearchInput.value);
     });
 
-    if (sendBtn) sendBtn.addEventListener("click", async () => {
-      const input = $("#chat-input");
-      const text = input.value;
-      if (!text.trim() || !activeChatFriend) return;
-      input.value = "";
-      try { await sendMessage(activeChatFriend.id, text); } catch (e) { alert(e.message); }
-    });
     const chatInput = $("#chat-input");
-    if (chatInput) chatInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") sendBtn && sendBtn.click();
+
+    function autosizeInput() {
+      if (!chatInput) return;
+      chatInput.style.height = "auto";
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + "px";
+    }
+    function updateSendState() {
+      if (!sendBtn || !chatInput) return;
+      sendBtn.disabled = !chatInput.value.trim();
+    }
+
+    async function doSend() {
+      if (!chatInput) return;
+      const text = chatInput.value;
+      if (!text.trim() || !activeChatFriend) return;
+      chatInput.value = "";
+      autosizeInput();
+      updateSendState();
+      try { await sendMessage(activeChatFriend.id, text); } catch (e) { alert(e.message); }
+    }
+
+    if (sendBtn) sendBtn.addEventListener("click", doSend);
+    if (chatInput) {
+      chatInput.addEventListener("input", () => { autosizeInput(); updateSendState(); });
+      chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          doSend();
+        }
+        // Shift+Enter falls through to the textarea's default newline.
+      });
+      updateSendState();
+    }
+
+    const chatLog = $("#chat-log");
+    if (chatLog) chatLog.addEventListener("scroll", () => {
+      if (isNearBottom(chatLog) && unseenWhileScrolledUp > 0) {
+        unseenWhileScrolledUp = 0;
+        updateScrollBottomBtn();
+      }
+    });
+    const scrollBottomBtn = $("#scroll-bottom-btn");
+    if (scrollBottomBtn) scrollBottomBtn.addEventListener("click", () => {
+      const log = $("#chat-log");
+      if (log) scrollLogToBottom(log);
     });
 
     if (backBtn) backBtn.addEventListener("click", backToList);
