@@ -38,12 +38,12 @@
       </div>
 
       <div id="friends-app" class="hidden friends-grid">
-        <div class="card" style="max-width:none; padding:14px 16px; display:flex; align-items:center; justify-content:space-between;">
-          <span style="font-size:13px; color:var(--steel);">Signed in</span>
+        <div class="card topbar-card">
+          <span class="signed-in-label">Signed in</span>
           <button class="btn btn-ghost btn-sm" id="friends-signout-btn">Sign Out</button>
         </div>
 
-        <section class="card">
+        <section class="card" id="friend-add-card">
           <h3 class="card-title">Add a Friend</h3>
           <div class="field-row">
             <input type="text" id="friend-search-input" placeholder="Search username...">
@@ -52,12 +52,12 @@
           <div id="friend-search-results"></div>
         </section>
 
-        <section class="card">
+        <section class="card" id="friend-requests-card">
           <h3 class="card-title">Friend Requests</h3>
           <div id="friend-requests-list"><p class="list-empty">No pending friend requests.</p></div>
         </section>
 
-        <section class="card">
+        <section class="card" id="friend-list-card">
           <h3 class="card-title">Your Friends</h3>
           <div id="friends-list"><p class="list-empty">No friends yet. Search above to add someone.</p></div>
         </section>
