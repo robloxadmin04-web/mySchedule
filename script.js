@@ -1737,12 +1737,7 @@ function importData(file){
   reader.readAsText(file);
 }
 function fixChatLoadingIssue(){
-  // Only clears the Chat page's local "was signed in" cache flag
-  // (cw_chat_signed_in). This is what can get stuck and cause the
-  // Chat tab to show a permanent loading skeleton with unclickable
-  // buttons. Does NOT touch your dashboard data or your actual
-  // Supabase login - just forces Chat to redo its normal auth check
-  // on next visit.
+
   localStorage.removeItem("cw_chat_signed_in");
   toast("Chat cache cleared. Open Chat again to reload it fresh.");
 }
@@ -3556,8 +3551,8 @@ function openEditProfileModal(){
   const fEmail = input("email", p.email, "Email");
   const fBio = textarea(p.bio, "Tell people a bit about yourself...");
   const fVisibility = select([
-    {value:"public", label:"Public — anyone can find and message me"},
-    {value:"private", label:"Private — hidden from search"}
+    {value:"public", label:"Public"},
+    {value:"private", label:"Private"}
   ], p.visibility || "public");
   const fBrandName = input("text", b.name, "App name shown in sidebar");
 
@@ -3593,10 +3588,7 @@ function openEditProfileModal(){
     el("div",{class:"form-grid"}, [ field("Year level", fYear), field("Section", fSection) ]),
     el("div",{class:"form-grid"}, [ field("School", fSchool), field("Email", fEmail) ]),
     field("Bio", fBio),
-    field("Profile visibility", el("div",{},[
-      fVisibility,
-      el("p",{class:"muted small",style:"margin-top:4px;"},["Private profiles won't show up under \u201cNew message\u201d search for other users."])
-    ])),
+    field("Profile visibility", fVisibility),
     field("Links", el("div",{},[
       linksList,
       el("button", {class:"btn btn-outline btn-sm", style:"margin-top:6px;", onclick:(e)=>{ e.preventDefault(); links.push({label:"",url:""}); renderLinkRows(); }}, ["+ Add Link"])
