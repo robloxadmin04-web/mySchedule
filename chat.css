@@ -1,10 +1,3 @@
-/* ============================================================
-   COURSEWORK — CHAT PAGE
-   Uses style.css's tokens (--surface, --border, --text, --radius,
-   etc.) directly. No second sidebar, no second theme system —
-   this file only styles the content area of the Chat page.
-   ============================================================ */
-
 .topbar-title{
   font-family: var(--font-display);
   font-weight: 700;
@@ -14,7 +7,6 @@
 
 #view-chat{ height: calc(100vh - 65px); display: flex; flex-direction: column; }
 
-/* ---------- Sign-in card ---------- */
 .auth-card{ max-width: 420px; padding: 22px; margin-top: 24px; }
 .auth-card h2{ font-size: 17px; margin-bottom: 6px; }
 .auth-sub{ margin-bottom: 16px; }
@@ -31,9 +23,6 @@
   margin-right: 6px;
 }
 
-/* ---------- Two-pane chat shell (list + conversation) ----------
-   Both panes live inside the dashboard's existing .content area.
-   This is content layout, not application navigation. */
 #friends-app{ flex: 1; min-height: 0; display: flex; }
 .chat-shell{
   display: grid;
@@ -57,7 +46,6 @@
   overflow: hidden;
 }
 
-/* ---------- List pane ---------- */
 .list-pane-top{
   display: flex;
   align-items: center;
@@ -98,8 +86,6 @@
 .conv-list{ overflow-y: auto; flex: 1; padding: 2px 8px 10px; min-height: 0; }
 .list-empty{ color: var(--text-faint); font-size: 13px; padding: 14px 10px; margin: 0; }
 
-/* ---------- Conversation item — the whole row is clickable, no
-   separate "Open" button. ---------- */
 .conv-item{
   display: flex; align-items: center; gap: 12px;
   width: 100%; text-align: left;
@@ -137,7 +123,6 @@
 .conv-item-row{ display: flex; align-items: center; gap: 4px; }
 .conv-item-row .conv-item{ flex: 1; min-width: 0; }
 
-/* ---------- Conversation pane ---------- */
 .convo-empty{
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; padding: 40px; text-align: center; color: var(--text-muted);
@@ -164,7 +149,6 @@
   background: var(--bg-sunken);
 }
 
-/* ---------- Date separators ---------- */
 .date-sep{
   display: flex; align-items: center; gap: 10px;
   margin: 14px 0 10px; color: var(--text-faint); font-size: 11px; font-weight: 600;
@@ -173,7 +157,6 @@
 .date-sep::before, .date-sep::after{ content: ''; flex: 1; height: 1px; background: var(--border); }
 .chat-log > .date-sep:first-child{ margin-top: 0; }
 
-/* ---------- Grouped messages ---------- */
 .msg-group{ display: flex; flex-direction: column; max-width: 68%; align-self: flex-start; margin-top: 8px; min-width: 0; }
 .msg-group.mine{ align-self: flex-end; align-items: flex-end; }
 .msg-row{ display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
@@ -188,14 +171,13 @@
   background: var(--accent); color: var(--accent-contrast);
   border-color: var(--accent); border-bottom-right-radius: 4px; border-bottom-left-radius: 14px;
 }
-/* Tighten corners between consecutive bubbles from the same sender */
+
 .msg-group:not(.mine) .msg-row:not(:first-child) .msg{ border-top-left-radius: 4px; }
 .msg-group:not(.mine) .msg-row:not(:last-child) .msg{ border-bottom-left-radius: 4px; }
 .msg-group.mine .msg-row:not(:first-child) .msg{ border-top-right-radius: 4px; }
 .msg-group.mine .msg-row:not(:last-child) .msg{ border-bottom-right-radius: 4px; }
 .msg-time{ font-size: 10.5px; color: var(--text-faint); margin-top: 3px; padding: 0 3px; }
 
-/* ---------- Scroll to bottom ---------- */
 .scroll-bottom-btn{
   position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 6px;
@@ -217,7 +199,6 @@
 }
 .chat-input-row .btn:disabled{ opacity: .45; cursor: default; }
 
-/* ---------- New message / requests overlays ---------- */
 .chat-modal-backdrop{
   position: fixed; inset: 0; z-index: 60;
   background: rgba(0,0,0,.4);
@@ -238,13 +219,11 @@
 .chat-modal > input{ margin: 12px 16px; width: auto; }
 .chat-modal .conv-list{ padding: 0 12px 12px; }
 
-/* ---------- Confirm dialog (custom, replaces window.confirm/alert) ---------- */
 .confirm-dialog{ max-width: 340px; }
 .confirm-dialog-message{ margin: 4px 16px 16px; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
 .confirm-dialog-actions{ display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px 16px; }
 .confirm-dialog-actions .btn-primary.danger{ background: #c94a4a; border-color: #c94a4a; color: #fff; }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 900px){
   #view-chat{ height: calc(100vh - 60px); }
 }
@@ -266,11 +245,6 @@
   .chat-modal{ max-width: none; max-height: none; border-radius: 0; height: 100%; }
 }
 
-/* ============================================================
-   PHASE 2 — reactions, replies, edit/delete, status, attachments,
-   presence, mute/block/report
-   ============================================================ */
-
 .chat-header{ position: relative; }
 .chat-header-id-btn{
   display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
@@ -280,7 +254,6 @@
 .chat-header-id-btn:hover{ background: var(--surface-2); }
 .chat-header-actions{ display: flex; gap: 4px; flex-shrink: 0; }
 
-/* ---------- Typing indicator ---------- */
 .typing-indicator{
   display: flex; align-items: center; gap: 6px; padding: 4px 16px;
   font-size: 11.5px; color: var(--text-faint); flex-shrink: 0;
@@ -305,7 +278,6 @@
 }
 .blocked-bar.hidden{ display: none; }
 
-/* ---------- Message hover actions ---------- */
 .msg-row{ position: relative; }
 .msg-row-actions{
   position: absolute; top: -14px; display: none; gap: 2px;
@@ -321,7 +293,6 @@
 }
 .msg-row-actions button:hover{ background: var(--surface-2); color: var(--text); }
 
-/* ---------- Message action menu (portal) ---------- */
 .msg-menu{
   position: fixed; z-index: 80; min-width: 150px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -335,7 +306,6 @@
 .msg-menu button:hover{ background: var(--surface-2); }
 .msg-menu button.danger{ color: #c94a4a; }
 
-/* Bottom sheet on mobile */
 @media (max-width: 760px){
   .msg-menu{
     left: 0 !important; right: 0; bottom: 0; top: auto !important; width: 100%;
@@ -344,7 +314,6 @@
   .msg-menu button{ padding: 12px 14px; font-size: 14px; }
 }
 
-/* ---------- Reaction picker (portal) ---------- */
 .reaction-picker{
   position: fixed; z-index: 80; display: flex; gap: 4px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
@@ -357,7 +326,6 @@
 }
 .reaction-picker button:hover{ transform: scale(1.2); background: var(--surface-2); }
 
-/* ---------- Reactions on a message ---------- */
 .msg-reactions{ display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 .msg-reactions .reaction-chip{
   display: flex; align-items: center; gap: 3px; font-size: 11px;
@@ -366,11 +334,9 @@
 }
 .msg-reactions .reaction-chip.mine{ border-color: var(--text-faint); color: var(--text); font-weight: 600; }
 
-/* ---------- Edited / deleted ---------- */
 .msg-edited-tag{ font-size: 10px; color: var(--text-faint); margin-left: 4px; }
 .msg.deleted{ font-style: italic; color: var(--text-faint); background: var(--surface-2); }
 
-/* ---------- Reply quote inside a bubble ---------- */
 .msg-quote{
   display: block; font-size: 11.5px; padding: 5px 8px; margin-bottom: 5px;
   border-left: 2px solid var(--text-faint); border-radius: 4px;
@@ -379,16 +345,13 @@
 .msg-quote-name{ font-weight: 700; display: block; }
 .msg.editing-active{ padding: 0; background: transparent; border: none; }
 
-/* ---------- Edit-in-place ---------- */
 .msg-edit-box{ display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
 .msg-edit-box textarea{ font-size: 13.5px; padding: 8px 10px; resize: vertical; }
 .msg-edit-actions{ display: flex; gap: 6px; justify-content: flex-end; }
 
-/* ---------- Delivery status ---------- */
 .msg-status{ font-size: 10.5px; color: var(--text-faint); margin-left: 4px; }
 .msg-status.seen{ color: var(--accent); font-weight: 600; }
 
-/* ---------- Reply preview bar above composer ---------- */
 .reply-preview-bar{
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 8px 14px; border-top: 1px solid var(--border); background: var(--surface-2); flex-shrink: 0;
@@ -398,7 +361,6 @@
 .reply-preview-name{ font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
 .reply-preview-text{ font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
 
-/* ---------- Attachments ---------- */
 .attach-wrap{ position: relative; flex-shrink: 0; }
 .attach-btn{ margin-bottom: 2px; }
 .attach-menu{
@@ -438,7 +400,6 @@
 .msg-file-size{ font-size: 11px; color: var(--text-faint); }
 .msg-file-open{ font-size: 12px; font-weight: 700; text-decoration: none; color: var(--accent); flex-shrink: 0; }
 
-/* ---------- Share cards ---------- */
 .msg-share-card{
   min-width: 220px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface);
 }
@@ -447,7 +408,6 @@
 .msg-share-body{ padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
 .msg-share-row{ display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: 12px; }
 
-/* ---------- Image viewer ---------- */
 .image-viewer{
   position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.9);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px;
@@ -461,7 +421,6 @@
   .image-viewer img{ max-width: 100vw; max-height: 82vh; border-radius: 0; }
 }
 
-/* ---------- Profile panel ---------- */
 .profile-panel-backdrop{
   position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.35);
   display: flex; justify-content: flex-end;
@@ -485,7 +444,6 @@
 .profile-panel-actions button.danger{ color: #c94a4a; }
 .profile-panel-state{ font-size: 11.5px; color: var(--text-faint); padding: 4px 8px; }
 
-/* ---------- Report / mute reason lists ---------- */
 .report-reasons{ display: flex; flex-direction: column; padding: 6px 12px 16px; }
 .report-reasons button{
   text-align: left; padding: 11px 8px; background: transparent; border: none; border-top: 1px solid var(--border);
@@ -494,17 +452,14 @@
 .report-reasons button:first-child{ border-top: none; }
 .report-reasons button:hover{ background: var(--surface-2); }
 
-/* ---------- Search-in-conversation results ---------- */
 .search-result-item{ padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; }
 .search-result-item:hover{ background: var(--surface-2); }
 .search-result-sender{ font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
 .search-result-preview{ font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-result-date{ font-size: 10.5px; color: var(--text-faint); }
 
-/* ---------- Highlight scrolled-to message ---------- */
 .msg-row.highlight .msg{ outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* ---------- Toast ---------- */
 .toast{
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100;
   background: var(--text); color: var(--bg-sunken); font-size: 12.5px; font-weight: 600;
