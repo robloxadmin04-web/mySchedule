@@ -195,7 +195,7 @@
     const state = readDashboardState();
     const p = state && state.profile;
     if (!p) return null;
-    return { name: (p.name || "").trim(), avatar: p.avatar || "" };
+    return { name: (p.name || "").trim(), avatar: p.avatar || "", isPublic: (p.visibility || "public") !== "private" };
   }
 
   async function syncProfileFromDashboard() {
@@ -205,11 +205,12 @@
 
     const needsNameSync = local.name !== currentUser.display_name;
     const needsAvatarSync = local.avatar !== (currentUser.avatar_url || "");
-    if (!needsNameSync && !needsAvatarSync) return;
+    const needsVisibilitySync = local.isPublic !== (currentUser.is_public !== false);
+    if (!needsNameSync && !needsAvatarSync && !needsVisibilitySync) return;
 
     const { data, error } = await sb
       .from("profiles")
-      .update({ display_name: local.name, avatar_url: local.avatar })
+      .update({ display_name: local.name, avatar_url: local.avatar, is_public: local.isPublic })
       .eq("id", currentUser.id)
       .select()
       .single();
@@ -285,6 +286,7 @@
       .select("id, username, display_name, avatar_url")
       .ilike("username", `%${query}%`)
       .neq("id", currentUser.id)
+      .eq("is_public", true)
       .limit(20);
     if (error) throw error;
     return data;
