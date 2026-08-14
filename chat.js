@@ -66,6 +66,47 @@
     } catch (e) { return null; }
   }
 
+  // Mirrors index.html's applyBranding(): sidebar logo + app name.
+  function applyBranding() {
+    const state = readDashboardState();
+    const b = (state && state.brand) || { name: "Coursework", logo: "" };
+    const nameBox = $("#brand-name");
+    const mark = $("#brand-mark");
+    if (!nameBox || !mark) return;
+    nameBox.textContent = b.name || "Coursework";
+    if (b.logo) {
+      mark.innerHTML = "";
+      mark.appendChild(el("img", { src: b.logo, alt: "Logo" }));
+    } else {
+      mark.textContent = (b.name || "C").trim().charAt(0).toUpperCase() || "C";
+    }
+  }
+
+  // Mirrors index.html's mini-profile rendering: the signed-in-to-the
+  // -dashboard identity (name/program/avatar set in Profile/Settings),
+  // not the Google account used for chat sign-in — same as index.html.
+  function applyMiniProfile() {
+    const state = readDashboardState();
+    const p = (state && state.profile) || {};
+    const nameBox = $("#mini-name");
+    const subBox = $("#mini-sub");
+    const avatarBox = $("#mini-avatar");
+    if (!nameBox || !subBox || !avatarBox) return;
+    nameBox.textContent = p.name || "Student";
+    subBox.textContent = p.program || "My Program";
+    if (p.avatar) {
+      avatarBox.innerHTML = "";
+      avatarBox.appendChild(el("img", { src: p.avatar, alt: "Avatar" }));
+    } else {
+      avatarBox.textContent = (p.name || "S").trim().charAt(0).toUpperCase() || "S";
+    }
+  }
+
+  function applyDashboardIdentity() {
+    applyBranding();
+    applyMiniProfile();
+  }
+
   function applyAppearance() {
     const state = readDashboardState();
     const s = (state && state.settings) || {};
@@ -120,7 +161,6 @@
     if (error) { console.error("Profile sync failed:", error.message); return; }
 
     currentUser = data;
-    renderIdentity();
     if (activeChatFriend) $("#chat-with-name") && ($("#chat-with-name").textContent = activeChatFriend.display_name || activeChatFriend.username);
   }
 
@@ -148,7 +188,7 @@
     renderAuthState();
 
     window.addEventListener("storage", (e) => {
-      if (e.key === DASHBOARD_STORAGE_KEY) { syncProfileFromDashboard(); applyAppearance(); }
+      if (e.key === DASHBOARD_STORAGE_KEY) { syncProfileFromDashboard(); applyAppearance(); applyDashboardIdentity(); }
     });
   }
 
@@ -291,34 +331,6 @@
       authBox.classList.remove("hidden");
       appBox.classList.add("hidden");
       closeChat();
-    }
-    renderIdentity();
-  }
-
-  // Reflects the signed-in user's synced identity in the sidebar's
-  // existing mini-profile slot (no new UI — just filling it in).
-  function renderIdentity() {
-    const avatarBox = $("#mini-avatar");
-    const nameBox = $("#mini-name");
-    const subBox = $("#mini-sub");
-    if (!avatarBox || !nameBox || !subBox) return;
-
-    if (!currentUser) {
-      avatarBox.textContent = "?";
-      nameBox.textContent = "Not signed in";
-      subBox.textContent = "Sign in to chat";
-      return;
-    }
-
-    const displayName = currentUser.display_name || currentUser.username || "Student";
-    nameBox.textContent = displayName;
-    subBox.textContent = currentUser.username ? "@" + currentUser.username : "Signed in";
-
-    if (currentUser.avatar_url) {
-      avatarBox.innerHTML = "";
-      avatarBox.appendChild(el("img", { src: currentUser.avatar_url, alt: displayName }));
-    } else {
-      avatarBox.textContent = initialsOf(displayName);
     }
   }
 
@@ -602,6 +614,7 @@
   applyAppearance();
   document.addEventListener("DOMContentLoaded", () => {
     applyAppearance();
+    applyDashboardIdentity();
     wireChromeEvents();
     wireFriendsEvents();
     initAuth();
