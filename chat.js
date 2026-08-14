@@ -279,6 +279,7 @@
       appBox.classList.remove("hidden");
       renderFriendsList();
       renderIncomingRequests();
+      renderMessagesList();
     } else {
       authBox.classList.remove("hidden");
       appBox.classList.add("hidden");
@@ -322,6 +323,7 @@
     box.innerHTML = "";
     let requests;
     try { requests = await getIncomingRequests(); } catch (e) { return; }
+    updateRequestsBadge(requests ? requests.length : 0);
     if (!requests.length) {
       box.appendChild(el("p", { class: "list-empty" }, ["No pending friend requests."]));
       return;
@@ -330,12 +332,34 @@
       const p = r.profiles;
       const name = p.display_name || p.username;
       box.appendChild(el("div", { class: "list-row" }, [
-        el("span", { class: "avatar" }, [initialsOf(name)]),
-        el("span", { class: "list-row-name" }, [name]),
-        el("button", { class: "btn btn-primary btn-sm", onclick: async () => { await acceptRequest(r.id); renderIncomingRequests(); renderFriendsList(); } }, ["Accept"]),
-        el("button", { class: "btn btn-ghost btn-sm", onclick: async () => { await declineRequest(r.id); renderIncomingRequests(); } }, ["Decline"])
+        el("div", { class: "list-row-id" }, [
+          el("span", { class: "avatar" }, [initialsOf(name)]),
+          el("span", { class: "list-row-name" }, [name])
+        ]),
+        el("div", { class: "list-row-actions" }, [
+          el("button", { class: "btn btn-primary btn-sm", onclick: async () => { await acceptRequest(r.id); renderIncomingRequests(); renderFriendsList(); renderMessagesList(); } }, ["Accept"]),
+          el("button", { class: "btn btn-ghost btn-sm", onclick: async () => { await declineRequest(r.id); renderIncomingRequests(); } }, ["Decline"])
+        ])
       ]));
     });
+  }
+
+  // Small numbered dot on the "Requests" tab so pending requests are
+  // visible without needing to switch tabs first.
+  function updateRequestsBadge(count) {
+    const tab = document.querySelector('.tab-btn[data-tab="requests"]');
+    if (!tab) return;
+    let badge = tab.querySelector(".tab-badge");
+    if (!count) {
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      badge = el("span", { class: "tab-badge" }, [String(count)]);
+      tab.appendChild(badge);
+    } else {
+      badge.textContent = String(count);
+    }
   }
 
   async function renderFriendsList() {
@@ -345,22 +369,55 @@
     let friends;
     try { friends = await getFriends(); } catch (e) { return; }
     if (!friends.length) {
-      box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search above to add someone."]));
+      box.appendChild(el("p", { class: "list-empty" }, ["No friends yet. Search the Add Friend tab to add someone."]));
       return;
     }
     friends.forEach(f => {
       const name = f.display_name || f.username;
       box.appendChild(el("div", { class: "list-row" }, [
-        el("span", { class: "avatar online" }, [initialsOf(name)]),
-        el("span", { class: "list-row-name", onclick: () => openChat(f) }, [name]),
-        el("button", { class: "btn btn-ghost btn-sm", onclick: () => openChat(f) }, ["Chat"]),
-        el("button", { class: "btn btn-ghost btn-sm", onclick: async () => {
-          if (confirm(`Unfriend ${name}?`)) {
-            await unfriend(f.id);
-            renderFriendsList();
-            if (activeChatFriend && activeChatFriend.id === f.id) closeChat();
-          }
-        } }, ["Unfriend"])
+        el("div", { class: "list-row-id", onclick: () => openChat(f) }, [
+          el("span", { class: "avatar online" }, [initialsOf(name)]),
+          el("span", { class: "list-row-name" }, [name])
+        ]),
+        el("div", { class: "list-row-actions" }, [
+          el("button", { class: "btn btn-ghost btn-sm", onclick: () => openChat(f) }, ["Chat"]),
+          el("button", { class: "btn btn-ghost btn-sm", onclick: async () => {
+            if (confirm(`Unfriend ${name}?`)) {
+              await unfriend(f.id);
+              renderFriendsList();
+              renderMessagesList();
+              if (activeChatFriend && activeChatFriend.id === f.id) closeChat();
+            }
+          } }, ["Unfriend"])
+        ])
+      ]));
+    });
+  }
+
+  // "Messages" tab: a lighter conversation-starter view over the same
+  // friends list, without the friend-management actions (Unfriend) —
+  // just the people you can open a chat with. Placeholder for a real
+  // last-message preview if/when message history is surfaced here.
+  async function renderMessagesList() {
+    const box = $("#messages-list");
+    if (!box) return;
+    box.innerHTML = "";
+    let friends;
+    try { friends = await getFriends(); } catch (e) { return; }
+    if (!friends.length) {
+      box.appendChild(el("p", { class: "list-empty" }, ["No conversations yet. Add a friend to start chatting."]));
+      return;
+    }
+    friends.forEach(f => {
+      const name = f.display_name || f.username;
+      box.appendChild(el("div", { class: "list-row" }, [
+        el("div", { class: "list-row-id", onclick: () => openChat(f) }, [
+          el("span", { class: "avatar online" }, [initialsOf(name)]),
+          el("span", { class: "list-row-name" }, [name])
+        ]),
+        el("div", { class: "list-row-actions" }, [
+          el("button", { class: "btn btn-ghost btn-sm", onclick: () => openChat(f) }, ["Open"])
+        ])
       ]));
     });
   }
@@ -376,13 +433,17 @@
     results.forEach(u => {
       const name = u.display_name || u.username;
       box.appendChild(el("div", { class: "list-row" }, [
-        el("span", { class: "avatar" }, [initialsOf(name)]),
-        el("span", { class: "list-row-name" }, [name]),
-        el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
-          e.target.disabled = true;
-          e.target.textContent = "Sent";
-          try { await sendFriendRequest(u.id); } catch (err) { e.target.textContent = "Error"; }
-        } }, ["Add Friend"])
+        el("div", { class: "list-row-id" }, [
+          el("span", { class: "avatar" }, [initialsOf(name)]),
+          el("span", { class: "list-row-name" }, [name])
+        ]),
+        el("div", { class: "list-row-actions" }, [
+          el("button", { class: "btn btn-primary btn-sm", onclick: async (e) => {
+            e.target.disabled = true;
+            e.target.textContent = "Sent";
+            try { await sendFriendRequest(u.id); } catch (err) { e.target.textContent = "Error"; }
+          } }, ["Add Friend"])
+        ])
       ]));
     });
   }
@@ -444,6 +505,28 @@
     });
 
     if (closeChatBtn) closeChatBtn.addEventListener("click", closeChat);
+
+    wireTabEvents();
+  }
+
+  // Switches between the Messages / Friends / Requests / Add Friend
+  // panels so they're never all shown crowded together at once.
+  function wireTabEvents() {
+    const tabbar = $("#chat-tabbar");
+    if (!tabbar) return;
+    $all(".tab-btn", tabbar).forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-tab");
+        $all(".tab-btn", tabbar).forEach(b => {
+          const isActive = b === btn;
+          b.classList.toggle("active", isActive);
+          b.setAttribute("aria-selected", isActive ? "true" : "false");
+        });
+        $all(".tab-panel").forEach(panel => {
+          panel.classList.toggle("active", panel.getAttribute("data-panel") === target);
+        });
+      });
+    });
   }
 
   // ---- 7. INIT -------------------------------------------------------
