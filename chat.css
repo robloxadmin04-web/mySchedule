@@ -163,32 +163,64 @@ html, body{
 }
 
 .friends-grid{
-  display: grid;
-  grid-template-columns: minmax(0,1fr);
-  grid-template-areas:
-    "topbar"
-    "add"
-    "requests"
-    "friends";
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  max-width: 980px;
+  max-width: 640px;
 }
 
-.friends-grid > .topbar-card{ grid-area: topbar; }
-.friends-grid > #friend-add-card{ grid-area: add; }
-.friends-grid > #friend-requests-card{ grid-area: requests; }
-.friends-grid > #friend-list-card{ grid-area: friends; }
-
-@media (min-width: 760px){
-  .friends-grid{
-    grid-template-columns: minmax(0,340px) minmax(0,1fr);
-    grid-template-areas:
-      "topbar   topbar"
-      "add      friends"
-      "requests friends";
-    align-items: start;
-  }
+/* ---------- Tab bar ---------- */
+.tabbar{
+  display: flex;
+  gap: 4px;
+  background: var(--mist);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 4px;
 }
+.tab-btn{
+  position: relative;
+  flex: 1;
+  appearance: none;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--steel);
+  padding: 9px 8px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.tab-btn:hover{ color: var(--ink); }
+.tab-btn.active{
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+.tab-btn:focus-visible{ outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.tab-badge{
+  position: absolute;
+  top: 2px; right: 6px;
+  min-width: 15px; height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--signal);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+
+/* ---------- Tab panels: only the active one shows, so Add a Friend /
+   Requests / Friends / Messages never sit stacked on top of each
+   other ---------- */
+.tab-panel{ display: none; }
+.tab-panel.active{ display: block; }
 
 /* ---------- Cards ---------- */
 .card{
@@ -369,7 +401,8 @@ input[type="text"]:focus{
   min-width: 0;
   cursor: default;
 }
-#friend-list-card .list-row-id{ cursor: pointer; }
+#panel-messages .list-row-id,
+#panel-friends .list-row-id{ cursor: pointer; }
 
 .list-row-actions{
   display: flex;
@@ -418,9 +451,7 @@ input[type="text"]:focus{
   white-space: nowrap;
 }
 
-#friend-list-card .list-row{ padding: 12px 10px; }
-#friend-list-card{ min-height: 100%; }
-#friend-list-card .card-title{ margin-bottom: 10px; }
+.tab-panel .list-row{ padding: 12px 10px; }
 
 /* ---------- Chat panel (slide-in card) ---------- */
 #chat-panel{
